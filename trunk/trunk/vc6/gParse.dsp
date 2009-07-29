@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "GPARSE_EXPORTS" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "GPARSE_EXPORTS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "..\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "GPARSE_EXPORTS" /YX /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -70,7 +70,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "GPARSE_EXPORTS" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "GPARSE_EXPORTS" /YX /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "..\include" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "GPARSE_EXPORTS" /YX /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
@@ -126,35 +126,39 @@ SOURCE=..\src\qstring.c
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
-SOURCE=..\src\gbool.h
+SOURCE=..\include\gbool.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\ghashtable.h
+SOURCE=..\include\ghashtable.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\glist.h
+SOURCE=..\include\glist.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\gstack.h
+SOURCE=..\include\gparse.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\gtextstream.h
+SOURCE=..\include\gstack.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\gtokenize.h
+SOURCE=..\include\gtextstream.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\gtpattern.h
+SOURCE=..\include\gtokenize.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\qstring.h
+SOURCE=..\include\gtpattern.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\include\qstring.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"
