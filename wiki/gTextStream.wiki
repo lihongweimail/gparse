@@ -1,4 +1,4 @@
-# text input abstraction
+#summary Text input abstraction interface
 
 = Introduction =
 
