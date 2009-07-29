@@ -1,0 +1,13 @@
+add 1
+sub 100
+add 12857
+root
+clear
+add 13
+ma
+clear
+add 12
+ms
+mr
+mc
+clear
