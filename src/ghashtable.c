@@ -37,10 +37,30 @@
 // identifier. 
 
 
+// SoM: This is only ever used in this file
+// This is the object type that's actually stored in the lists
+typedef struct gHashItem
+{
+   // This is the key associated with the object
+   char *key;
+
+   // This is the object 
+   void *object;
+
+   // This is the function that should be used to free the object when it is
+   // deleted. (This is 'inherited' from the gHashTable object)
+   void (*freeFunc)(void *object);
+
+   // Next item in the chain
+   struct gHashItem *next, *prev;
+} gHashItem;
+
+
+
 void hashFreeNOP(void *obj) {}
 
 // Used to free the entry objects.
-void freeHashEntry(gHashItem *item)
+static void freeHashEntry(gHashItem *item)
 {
    if(!item)
       return;
@@ -51,7 +71,7 @@ void freeHashEntry(gHashItem *item)
 }
 
 
-unsigned calcHashKey(const char *string)
+static unsigned calcHashKey(const char *string)
 {
    const char *c = string;
    unsigned h = 0;
@@ -70,7 +90,7 @@ unsigned calcHashKey(const char *string)
 
 
 
-unsigned calcHashKeyS(const char *string)
+static unsigned calcHashKeyS(const char *string)
 {
    const char *c = string;
    unsigned h = 0;
@@ -88,7 +108,7 @@ unsigned calcHashKeyS(const char *string)
 }
 
 
-static gHashItem *makeBinHead()
+static gHashItem *makeChainHead()
 {
    gHashItem *it = malloc(sizeof(gHashItem));
    memset(it, 0, sizeof(*it));
@@ -103,27 +123,26 @@ static gHashItem *makeBinHead()
 // Creates a new gHashTable object. If freeFunc is null, the code assumes the
 // objects in the table should not be freed when they are removed or the table 
 // is freed.
-gHashTable *gNewHashTable(unsigned numBins, void (*freeFunc)(void *), bool ignoreCase)
+gHashTable *gNewHashTable(unsigned numChains, void (*freeFunc)(void *), bool ignoreCase)
 {
    gHashTable *ret;
    unsigned    i;
 
-   if(!numBins)
+   if(!numChains)
       return NULL;
 
    ret = malloc(sizeof(gHashTable));
    memset(ret, 0, sizeof(*ret));
 
-   ret->numBins = numBins;
-   ret->bins = gNewList(free);
+   ret->chains = gNewList(free);
 
    if(freeFunc == NULL)
       ret->freeFunc = hashFreeNOP;
    else
       ret->freeFunc = freeFunc;
 
-   for(i = 0; i < numBins; i++)
-      gAppendListItem(ret->bins, makeBinHead());
+   for(i = 0; i < numChains; i++)
+      gAppendListItem(ret->chains, makeChainHead());
 
    if(ignoreCase)
    {
@@ -152,9 +171,9 @@ void gFreeHashTable(gHashTable *table)
       return;
 
 
-   for(i = 0; i < table->numBins; i++)
+   for(i = 0; i < table->chains->size; i++)
    {
-      head = (gHashItem *)gGetListItem(table->bins, i);
+      head = (gHashItem *)gGetListItem(table->chains, i);
 
       for(it = head->next; it != head; it = next)
       {
@@ -164,7 +183,7 @@ void gFreeHashTable(gHashTable *table)
       }
    }
 
-   gFreeList(table->bins);
+   gFreeList(table->chains);
    free(table);
 }
 
@@ -172,21 +191,23 @@ void gFreeHashTable(gHashTable *table)
 
 // gRehashTable
 // Resizes and re-hashes the given table to the specified number of bins
-bool gRehashTable(gHashTable *table, unsigned int numBins)
+bool gRehashTable(gHashTable *table, unsigned int numChains)
 {
    unsigned int i;
    gHashItem    *list = NULL, *it, *next;
 
    // check everything out
-   if(!table || !numBins || !table->numBins || numBins == table->numBins)
+   if(!table || !numChains || !table->chains->size || 
+      numChains == table->chains->size)
       return false;
 
    // Gather all the hash items
-   for(i = 0; i < table->bins->size; i++)
+   for(i = 0; i < table->chains->size; i++)
    {
-      gHashItem *head = (gHashItem *)gGetListItem(table->bins, i);
+      gHashItem *head = (gHashItem *)gGetListItem(table->chains, i);
       gHashItem *first, *last;
 
+      // If there are items in the chain, add it to the gathering chain.
       if(head->next != head)
       {
          first = head->next;
@@ -198,7 +219,7 @@ bool gRehashTable(gHashTable *table, unsigned int numBins)
       else
          first = last = NULL;
 
-      if(!list)
+      if(!list && first)
          list = first;
       else if(first && last)
       {
@@ -207,20 +228,22 @@ bool gRehashTable(gHashTable *table, unsigned int numBins)
       }
    }
 
-   while(table->bins->size < numBins)
-      gAppendListItem(table->bins, makeBinHead());
-   if(table->bins->size > numBins)      
-      gDeleteListRange(table->bins, numBins, table->bins->size - 1);
+   // Expand the table if the new size is larger.
+   while(table->chains->size < numChains)
+      gAppendListItem(table->chains, makeChainHead());
 
-   table->numBins = table->bins->size;
+   // Delete extra chains if the new size is smaller.
+   if(table->chains->size > numChains)      
+      gDeleteListRange(table->chains, numChains, table->chains->size - 1);
 
+   // Now, run through the collector chain and hash items it contains.
    for(it = list; it; it = next)
    {
-      unsigned int index = table->hashFunc(it->key) % table->numBins;
+      unsigned int index = table->hashFunc(it->key) % table->chains->size;
       gHashItem *head;
       
       next = it->next;
-      head = (gHashItem *)gGetListItem(table->bins, index);
+      head = (gHashItem *)gGetListItem(table->chains, index);
       if(!head)
       {
          // Error out?
@@ -250,8 +273,8 @@ static gHashItem *findHashItem(gHashTable *table, const char *key)
    if(!table || !key)
       return NULL;
 
-   index = table->hashFunc(key) % table->numBins;
-   foundHead = head = (gHashItem *)gGetListItem(table->bins, index);
+   index = table->hashFunc(key) % table->chains->size;
+   foundHead = head = (gHashItem *)gGetListItem(table->chains, index);
 
    for(item = head->next; item != head; item = item->next)
    {
