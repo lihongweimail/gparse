@@ -32,6 +32,14 @@
 
 #include "glist.h"
 
+/** \file ghashtable.h
+    \brief Generalized hashtable.
+
+    Contains definitions and functions for gHashTable, a generalized hash table
+    which archives, and searches objects by a string "key".
+ */
+
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -42,93 +50,117 @@ extern "C"
 // Generalized hash table which associates an object with a unique string
 // identifier. 
 
-typedef struct gHashTable_s gHashTable;
 
-
-typedef unsigned (*gHashFunc)(const char *string);
-
-
-
-// This is the object type that's actually stored in the lists
-typedef struct gHashItem_s gHashItem;
-typedef struct gHashItem_s
+/** \struct gHashTable
+ *  \brief Generalized hash table object.
+ *
+ *  gHashTable archives, and retrieves objects based on a string "key".
+ *  Only one occurance of each key is allowed in the table, and the table can 
+ *  optionally ignore case. These tables can also optionally be used for memory
+ *  management of the contents. It is recommended that these tables be created 
+ *  with gNewHashTable and freed with gFreeHashTable.
+ *  \see ghashtable.h::gNewHashTable, ghashtable.h::gFreeHashTable, 
+ *       ghashtable.h::gFreeHashTable, ghashtable.h::gAddTableItem, 
+ *       ghashtable.h::gFindTableItem, ghashtable.h::gRemoveTableItem,
+ *       ghashtable.h::gRehashTable
+ */
+typedef struct gHashTable
 {
-   // This is the key associated with the object
-   char *key;
+   gList *chains;  //!< List of hash chains in the table.
 
-   // This is the object 
-   void *object;
-
-   // This is the function that should be used to free the object when it is
-   // deleted. (This is 'inherited' from the gHashTable object)
+   /** Function called when objects are removed from the table. Can be a NOP
+       function. */
    void (*freeFunc)(void *object);
 
-   // Next item in the chain
-   gHashItem *next, *prev;
-};
+   /** Function used to hash the strings passed to the table. */
+   unsigned (*hashFunc)(const char *string);
 
+   /** Function used to compare individual elements in a hash chain. */
+   int (*compFunc)(const char *s1, const char *s2);
 
-
-
-// Note: Because all strings would have to be rehashed and objects re-archived 
-// if the number of hash bins changed, I'm not going to bother trying to make
-// the struct itself support changing the number of bins after the object
-// is created.
-typedef struct gHashTable_s
-{
-   // The number of bins in the table
-   unsigned int numBins;
-
-   // List of pointers.
-   gList *bins;
-
-   // Pointer to the free function to be used on the objects
-   // passed to the table.
-   void (*freeFunc)(void *object); 
-
-   // Pointer to the hash function to be used on the strings.
-   gHashFunc hashFunc;
-
-   // Pointer to the string comparison function
-   int (*compFunc)(const char *, const char *);
-
-   // Counts
+   /** Number of items in the table. */
    unsigned int itemCount;
-};
+} gHashTable;
 
 
 
-// gNewHashTable
-// Creates a new gHashTable object. If freeFunc is null, the code assumes the
-// objects in the table should not be freed when they are removed or the table 
-// is freed.
-gHashTable *gNewHashTable(unsigned numBins, void (*freeFunc)(void *), bool ignoreCase);
+
+/** \fn gHashTable *gNewHashTable(unsigned numChains, void (*freeFunc)(void *), bool ignoreCase)
+ *  \brief Creates a new hash table.
+ *
+ *  Creates a new gHashTable object with the given number of hash chains.
+ *  If freeFunc is null, the code assumes the objects in the table should 
+ *  not be freed when they are removed or the table is freed.
+ *
+ *  @param[in] numChains Initian number of chains in the table.
+ *  @param[in] freeFunc Function used to free items when they are removed. Can be NULL.
+ *  @param[in] ignoreCase If true, the hash table will ignore case when storing/finding items.
+ *  @returns Newly created hash table or NULL on error.
+ */
+gHashTable *gNewHashTable(unsigned numChains, void (*freeFunc)(void *), bool ignoreCase);
 
 
-// gFreeHashTable
-// Frees the given hash table, deleteing all the bins which free all contained
-// objects.
+/** \fn void gFreeHashTable(gHashTable *table)
+ *  \brief Frees a hash table.
+ *
+ *  Frees the given hash table, calling the freeFunc for all objects in the table.
+ *
+ *  @param[in] table Hash table to free.
+ */
 void gFreeHashTable(gHashTable *table);
 
 
-// gAddTableItem
-// Attempts to add the given object to the hash table. If the given key already exists
-// the function will return false. Otherwise returns true. The string passed will be
-// copied. The gHashTable will not free the string you pass to this function.
+/** \fn bool gAddTableItem(gHashTable *table, const char *key, void *item)
+ *  \brief Adds an item to a hash table.
+ *
+ *  Attempts to add the given item to the hash table. If the given key already exists
+ *  the function will return false. Otherwise returns true. The string passed will be
+ *  copied. The gHashTable will not free the string you pass to this function.
+ *
+ *  @param[in] table Table to add the item to.
+ *  @param[in] key String key to associate with the item
+ *  @param[in] item Actual item to be stored. 
+ *  @returns true on success, false if the item already exists.
+ */
 bool gAddTableItem(gHashTable *table, const char *key, void *item);
 
 
-// gFindTableItem
-// Searches the hash table for the given key and returns a pointer to the associated
-// object (returns NULL on fail)
+/** \fn void *gFindTableItem(gHashTable *table, const char *key)
+ *  \brief Searches a hash table for an item with a matching key.
+ *
+ *  Searches the hash table for the given key and returns a pointer to the associated
+ *  item.
+ *
+ *  @param[in] table Hash table to search
+ *  @param[in] key Hash key to search for
+ *  @returns Associated object on success, NULL on fail.
+ */
 void *gFindTableItem(gHashTable *table, const char *key);
 
 
-// gRemoveTableItem
-// Searches the hash table for the given key and removes it from the bin. If 
-// the table is set to free objects, it will be freed. Returns true if the
-// key was found, or false if it was not.
+/** \fn bool gRemoveTableItem(gHashTable *table, const char *key)
+ *  \brief Removes an item from a hash table.
+ *
+ *  Searches the hash table for the given key and removes it from the bin. If 
+ *  the table is set to free objects, it will be freed. 
+ *
+ *  @param[in] table Table to remove the item from
+ *  @param[in] key The key of the item to be removed.
+ *  @return True if the item was successfully removed, false if it could not be found.
+ */
 bool gRemoveTableItem(gHashTable *table, const char *key);
+
+
+/** \fn bool gRehashTable(gHashTable *table, unsigned int numChains)
+ *  \brief Changes the number of hash chains
+ *
+ *  Resizes and re-hashes the given table to the specified number of chains.
+ *
+ *  @param[in] table Hash table to be rehashed
+ *  @param[in] numChains Number of chains the table should have.
+ *  @returns true on success, false on error.
+ */
+bool gRehashTable(gHashTable *table, unsigned int numChains);
 
 
 
