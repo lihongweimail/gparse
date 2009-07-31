@@ -124,7 +124,7 @@ void tpResetPattern(tPattern *p)
    gClearStack(p->stack);
    p->ecount = p->wcount = 0;
    p->i = 0;
-   // TODO: the token stream needs to be reset as well.
+   gResetTokenStream(p->tstream);
 }
 
 
@@ -389,3 +389,4 @@ int tpExecutePattern(tPattern *p)
 
    return ret;
 }
+

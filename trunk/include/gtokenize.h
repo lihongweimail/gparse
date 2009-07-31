@@ -359,6 +359,19 @@ void gFreeTokenStream(gTokenStream *tokstrm);
 
 
 /**
+ * \fn void gResetTokenStream(gTokenStream *tokstrm)
+ * \brief Resets a token stream.
+ *
+ * This function clears all cache and resets the text stream back to the
+ * beginning of the file/buffer it is streaming, returning the token stream
+ * back to it's initial state.
+ *
+ * @param[in] tokstrm Token stream to be reset.
+*/
+void gResetTokenStream(gTokenStream *tokstrm);
+
+
+/**
  * \fn gToken *gGetNextToken(gTokenStream *tokstrm)
  * \brief Returns the next token in the stream.
  *
