@@ -304,7 +304,7 @@ typedef struct tpStep
  * This is the struct passed to the token processor. Manually modification
  * of the members of this struct is _strongly_ discouraged. Please use 
  * the associated functions instead.
- * \see  gtpattern.h::tpNewPattern, 
+ * \see  gtpattern.h::tpNewPattern, gtpattner.h::tpResetPattern,
  *       gtpattern.h::tpFreePattern, gtpattern.h::tpClearInlist,
  *       gtpattern.h::tpIncrementCount, gtpattern.h::tpIncrementCount,
  *       gtpattern.h::tpExecutePattern
