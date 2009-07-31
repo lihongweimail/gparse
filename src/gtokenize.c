@@ -168,6 +168,7 @@ void gResetTokenStream(gTokenStream *tokstrm)
    gSeekPos(tokstrm->stream, 0);
 }
 
+
 // Little helper functions.
 static bool isNumeric(char c)
 {

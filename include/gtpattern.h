@@ -340,10 +340,17 @@ typedef struct tPattern
 tPattern *tpNewPattern(tpStep *stepList, gTokenStream *tstream);
 
 
-// tpResetPattern
-// Clears all internal data to it's initial state. Allows the same pattern to
-// be run multiple times
-//void tpResetPattern(tPattern *p);
+/**
+ * \fn void tpResetPattern(tPattern *p)
+ * \brief Resets a token pattern
+ * 
+ * This function clears the operations stack, resets the token stream,
+ * clears error/warning counts, and resets the token index of the given 
+ * token pattern. Returns it to it's initial state.
+ *
+ * @param[in] p Token pattern to reset.
+*/
+void tpResetPattern(tPattern *p);
 
 
 /**
