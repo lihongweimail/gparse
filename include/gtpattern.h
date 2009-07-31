@@ -54,10 +54,10 @@ extern "C"
 // ----------------------------------------------------------------------------
 // Token Patterns
 
-
+#ifndef DOXYGEN_IGNORE
 typedef struct tPattern tPattern; //!< Typedef of struct tPattern
 typedef struct tpStep tpStep;     //!< Typedef of struct tpStep
-
+#endif
 
 /**
  * \struct tpHookParms
