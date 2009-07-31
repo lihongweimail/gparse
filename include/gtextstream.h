@@ -31,6 +31,13 @@
 #ifndef GTEXTSTREAM_H
 #define GTEXTSTREAM_H
 
+/**
+ * \file gtextstream.h
+ * \brief Text input stream abstraction.
+ *
+ * gTextStream is an abstraction which allows the tokenizer to access text from
+ * a file or memory through the same buffered interface.
+*/
 
 #ifdef __cplusplus
 extern "C"
@@ -42,107 +49,135 @@ extern "C"
 // Text stream
 // The buffered text object allows the tokenizer to tokenize a pre-allocated 
 // buffer or from an open file stream.
-typedef enum
+
+
+/**
+ * \struct gTextStream
+ * \brief Text streaming abstraction.
+ *
+ * gTextStream provides a single interface for the tokenizer to stream text
+ * from either a file or memory. Most fields are for internal use only. 
+ * the management functions should really always be used with them.
+ * \see  gtextstream.h::gStreamFromMemory, gtextstream.h::gStreamFromFilename,
+ *       gtextstream.h::gFreeStream, gtextstream.h::gGetChar,
+ *       gtextstream.h::gReadChar, gtextstream.h::gReadahead,
+ *       gtextstream.h::gSeekPos, gtextstream.h::gSeek,
+ *       gtextstream.h::gStreamEnd
+*/
+typedef struct gTextStream
 {
-   streamUninitalized,
-   streamMemory,
-   streamFile,
-} gBufferType_e;
-
-
-
-typedef struct gTextStream_s
-{
-   gBufferType_e  type;
-
    bool           eofflag;
-
-   // Memory buffers.
-   // Simple, easy to manage.
-   char           *memory;
-   const char     *rover;
    int            streamlen;
-   bool           owner;
 
-   // File streams
-   // A bit trickier. The input from a filestream needs to be buffered to
-   // an extent, but not the entire file. The temp buffer starts at 10 chars
-   // and expands each time gGetChars is called with a number > than the
-   // buffer size.
-   char           *fbuffer;
-   char           *tempstr;
-   int            buffermax;
-   // fbufferlen is the length of the string inside the buffer.
-   int            fbufferlen;
-
-   // fbufferpos is the position in the filestream the buffer starts
-   int            fbufferpos;
-
-   int            fpos;
-   FILE           *f;
+   // Stream data (used internally)
+   void           *data;
 
    // Function pointers for the various stream modes
-   char           (*ggetchar)(struct gTextStream_s *);
-   char           (*readchar)(struct gTextStream_s *);
-   char*          (*readahead)(struct gTextStream_s *, unsigned int);
-   void           (*seek)(struct gTextStream_s *, int);
-   void           (*freestream)(struct gTextStream_s *);
+   char           (*ggetchar)(struct gTextStream *);
+   char           (*readchar)(struct gTextStream *);
+   char*          (*readahead)(struct gTextStream *, unsigned int);
+   void           (*seek)(struct gTextStream *, int);
+   void           (*freestream)(struct gTextStream *);
 } gTextStream;
 
 
-// gStreamFromMemory
-// Creates a stream from a memory buffer. If owner is set to true, the memory
-// will be freed with the stream is freed.
+/**
+ * \fn gTextStream *gStreamFromMemory(char *memory, int length, bool owner)
+ * \brief gTextStream from a memory buffer.
+ *
+ * Creates a text stream from a memory buffer. It is important to pass an 
+ * accurate length value because a memory stream only has this value to find
+ * the end of the stream.
+ *
+ * @param[in] memory The memory buffer to stream from
+ * @param[in] length Length of the memory buffer.
+ * @param[in] owner If set to true, gFreeStream will free the memory buffer.
+ * @returns New gTextStream, NULL on failure
+*/
 gTextStream *gStreamFromMemory(char *memory, int length, bool owner);
 
-// gStreamFromFilename
-// Opens an archive and loads a skin from it.
+
+/**
+ * \fn gTextStream *gStreamFromFilename(const char *filename)
+ * \brief gTextStream from a filename.
+ *
+ * Opens a file and creates a gTextStream from the handle.
+ * 
+ * @param[in] filename Name of the file to open and stream.
+ * @return New gTextStream on success, NULL on failure (failed to open file)
+*/
 gTextStream *gStreamFromFilename(const char *filename);
 
-// gFreeStream
-// Frees the given stream. If the stream is a memory buffer, the memory is 
-// freed. If the stream is a file, the filestream is clused.
-// void gFreeStream(gTextStream *stream);
+/**
+ * \def gFreeStream(stream)
+ * \brief Frees a gTextStream
+ *
+ * Frees \a stream. If the stream is a memory buffer, the memory is 
+ * freed. If the stream is a file, the filestream is clused.
+*/
 #define gFreeStream(stream)  stream->freestream(stream)
 
 
-// gGetChar
-// Returns the next character from the given stream. Returns 0 on EOF.
-// This function increments the memory/file pointer.
-// char gGetChar(gTextStream *stream);
+/**
+ * \def gGetChar(stream)
+ * \brief Gets a character
+ *
+ * Returns the next character from \a stream and increments the file/memory
+ * pointer. Returns 0 on EOF
+*/
 #define gGetChar(stream) stream->ggetchar(stream)
 
 
-// gReadChar
-// Returns the next character from the given stream. Returns 0 on EOF.
-// This function does not increment the memory/file pointer.
-// char gReadChar(gTextStream *stream);
+/**
+ * \def gReadChar(stream)
+ * \brief Reads a character
+ *
+ * Returns the next character from \a stream but does not increment the 
+ * file/memory pointer. Returns 0 on EOF
+*/
 #define gReadChar(stream) stream->readchar(stream)
 
 
-// gReadahead
-// Returns a pointer to a string containing the next (count) number of 
-// characters from the given stream. If the stream is exhausted, the 
-// remainder is returned. (returns NULL on EOF).
-// This function is a read-ahead function and does not increment 
-// the stream pointer.
-// char *gReadahead(gTextStream *stream, unsigned int count);
+/**
+ * \def gReadahead(stream, count)
+ * \brief Reads a string from a stream.
+ *
+ * Returns a pointer to a string containing the next (count) number of 
+ * characters from the given stream. If the stream is exhausted, the 
+ * remainder is returned. (returns NULL on EOF).
+ * This function is a read-ahead function and does not increment 
+ * the stream pointer.
+*/
 #define gReadahead(stream, count) stream->readahead(stream, count)
 
 
-// gSeekPos
-// Seeks an absolute position within the stream
+/**
+ * \fn void gSeekPos(gTextStream *stream, int pos)
+ * \brief Seek to a position in the stream.
+ *
+ * Seeks an absolute position within the stream.
+ *
+ * @param[in] stream Stream to seek within
+ * @param[in] pos Position within the stream.
+*/
 void gSeekPos(gTextStream *stream, int pos);
 
 
-// gSeek
-// Seeks ahead or behind the given number of characters in the stream.
-// void gSeek(gTextStream *stream, int offset);
+/**
+ * \def gSeek(stream, offset)
+ * \brief Seek ahead or behind in a stream.
+ *
+ * Seeks ahead or behind by \a offset the given number of characters in \a stream.
+*/
 #define gSeek(stream, offset) stream->seek(stream, offset)
 
 
-// gStreamEnd
-// Returns true of the stream has reached the end of the buffer/file.
+/**
+ * \fn bool gStreamEnd(gTextStream *stream)
+ * \brief Detects end of stream.
+ *
+ *  @return true of the stream has reached the end of the buffer/file.
+*/
 bool gStreamEnd(gTextStream *stream);
 
 

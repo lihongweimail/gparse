@@ -57,15 +57,16 @@ extern "C"
 // the input stream.
 
 
-/** \struct gKeyword
-  * \brief Keyword definition object.
-  *
-  * Struct which is used to define a keyword. In gParse a keyword is a token, 
-  * which fits the criteria for a tIdentifier token (see: gTokenType_e),
-  * that matches one of the token members of a list of gKeyword structs. A
-  * list of these structs must be terminated with an entry containing a NULL
-  * "token" member.
-  */ 
+/** 
+ * \struct gKeyword
+ * \brief Keyword definition object.
+ *
+ * Struct which is used to define a keyword. In gParse a keyword is a token, 
+ * which fits the criteria for a tIdentifier token (see: gTokenType_e),
+ * that matches one of the token members of a list of gKeyword structs. A
+ * list of these structs must be terminated with an entry containing a NULL
+ * "token" member.
+*/ 
 typedef struct
 {
    char *token;      //!< original char token
@@ -74,14 +75,15 @@ typedef struct
 } gKeyword;
 
 
-/** \struct gSymbol
-  * \brief Symbol/operator definifion object.
-  *
-  * A struct which is used to define a symbol. A symbol can be any grouping of
-  * characters between 1 and 3 characters, plus one zero terminating character,
-  * in length. An array of gSymbol structs must end with the token being equal
-  * to ""
-  */ 
+/**
+ * \struct gSymbol
+ * \brief Symbol/operator definifion object.
+ *
+ * A struct which is used to define a symbol. A symbol can be any grouping of
+ * characters between 1 and 3 characters, plus one zero terminating character,
+ * in length. An array of gSymbol structs must end with the token being equal
+ * to ""
+*/ 
 typedef struct
 {
    char token[4];    //!< String (max 3 chars + 0x0)
@@ -90,15 +92,16 @@ typedef struct
 
 
 
-/** \struct gEscape
-  * \brief Escape sequence definition object
-  *
-  * An escape character is a character following a backslash (\) in a string
-  * literal. If the escape character is not found in the parms escape list,
-  * both characters are replaced with the character following the slash.
-  * If the gIgnoreEscapes flag is enabled in the gTokenParms passed
-  * to the tokenizer, these will be ignored all together. 
-  */
+/** 
+ * \struct gEscape
+ * \brief Escape sequence definition object
+ *
+ * An escape character is a character following a backslash (\) in a string
+ * literal. If the escape character is not found in the parms escape list,
+ * both characters are replaced with the character following the slash.
+ * If the gIgnoreEscapes flag is enabled in the gTokenParms passed
+ * to the tokenizer, these will be ignored all together. 
+*/
 typedef struct
 {
    char escchar;     //!< Character to look for after a slash
@@ -107,12 +110,13 @@ typedef struct
 
 
 
-/** \enum gParseFlags_e
-  * \brief Tokenizer flags.
-  *
-  * Enum containing flag values which can be combined in the flags field of 
-  * gTokenParms 
-  */
+/**
+ * \enum gParseFlags_e
+ * \brief Tokenizer flags.
+ *
+ * Enum containing flag values which can be combined in the flags field of 
+ * gTokenParms 
+*/
 typedef enum
 {
    gIgnoreCase = 0x1,      //!< Ignore case when marking keywords
@@ -122,38 +126,45 @@ typedef enum
 } gParseFlags_e;
 
 
-/** \typedef gErrorFunc
- *  \brief Type of function pointer for error message setting functions.
+/**
+ * \typedef gErrorFunc
+ * \brief Type of function pointer for error message setting functions.
  *
- *  Type of function pointer for error message setting functions. The function
- *  this points to could also perform logging.
+ * Type of function pointer for error message setting functions. The function
+ * this points to could also perform logging.
  *
- *  @param[in]  fmt Format string for the message
- *  @param[in]  ... Variable parameters as dictated by the format string.
- */
+ * @param[in]  fmt Format string for the message
+ * @param[in]  ... Variable parameters as dictated by the format string.
+*/
 typedef void (*gErrorFunc)(const char *fmt, ...);
 
-/** \typedef gGetErrorFunc
- *  \brief Type of function point for getting error messages.
+/**
+ * \typedef gGetErrorFunc
+ * \brief Type of function point for getting error messages.
  *
- *  Type used to specify a valid error message function. This function should
- *  not take any parameters (in fact, should have a void parameter list) but 
- *  should return the last error message set by the setError function.
+ * Type used to specify a valid error message function. This function should
+ * not take any parameters (in fact, should have a void parameter list) but 
+ * should return the last error message set by the setError function.
  *
- *  @return last error message set or NULL if setError has not been called.
- */
+ * @return last error message set or NULL if setError has not been called.
+*/
 typedef const char *(*gGetErrorFunc)(void);
 
-/** \typedef strCompFunc
- *  \brief Used internally to store either strcmp or stricmp based on flags.
- *  Used internally to store either strcmp or stricmp based on flags.
- */
+/** 
+ * \typedef strCompFunc
+ * \brief Used internally to store either strcmp or stricmp based on flags.
+ *
+ * Used internally to store either strcmp or stricmp based on flags.
+*/
 typedef int  (*strCompFunc)(const char *, const char *, unsigned int);
 
 
-/** \struct gTokenParms
- *  Struct used to pass parameters to the tokenizer/lexer.
- */
+/** 
+ * \struct gTokenParms
+ * \brief Tokenizer/Lexer parameters.
+ *
+ * Struct used to pass parameters to the tokenizer/lexer.
+*/
 typedef struct 
 {
    gKeyword   *keywlist;    //!< list of keywords used in tokenizing
@@ -161,17 +172,20 @@ typedef struct
    gEscape    *escapelist;  //!< List of escape sequence chars in string literals
 
    /**
-    *  Comments:
-    *  The tokenizer supports up to two comment styles. Each specified by the 
-    *  strings. commentXs is the marker denoting the beginning of a comment
-    *  (eg. //) and commentXe is the marker denoting the end
-    *  (eg. line-end). These strings are never modified so it's safe to assign string
-    *  constants to them.
-    */
-   char  *comment1s, *comment1e; //!< start end end strings for the first comment type (defaults: "//" and "\n")
-   char  *comment2s, *comment2e; //!< start end end strings for the second comment type (defaults: "/*" and "*/")
+    * \brief Start string of fist comment type (default: "//")
+    *
+    * Comments:
+    * The tokenizer supports up to two comment styles. Each specified by the 
+    * strings. commentXs is the marker denoting the beginning of a comment
+    * (eg. //) and commentXe is the marker denoting the end
+    * (eg. line-end). These strings are never modified so it's safe to assign string
+    * constants to them.
+   */
+   char  *comment1s, *comment1e; //!< End string for the first comment type (default: "\n")
+   /** \brief Start string of the second comment type (default: "/*") */
+   char  *comment2s, *comment2e; //!< End string for the second comment type (default: "*/")
 
-   int        flags;       //!< parser flags \see gParseFlags_e (defaults: 0)
+   int        flags;       //!< parser flags (defaults: 0) \see gParseFlags_e
 
    gErrorFunc setError;    //!< Pointer to the function used to set errors (defaults: internal NOP function)
    gGetErrorFunc getError; //!< Pointer to the function used to get errors (defaults: internal NOP function)
@@ -181,18 +195,25 @@ typedef struct
 
 
 
-/** \fn gTokenParms *gNewParms()
- *  Allocates and initializes and then returns a new gTokenParms structure.
- *  @return A new allocated and initialized gTokenParms object.
- */
+/**
+ * \fn gTokenParms *gNewParms()
+ * 
+ * Allocates and initializes and then returns a new gTokenParms structure.
+ *
+ * @return A new allocated and initialized gTokenParms object.
+*/
 gTokenParms *gNewParms();
 
 
-/** \fn void gFreeParms(gTokenParms *parameters)
- *  Frees an allocated gTokenParms structure. Currently this just calls free
- *  but it is recommended this function be used.
- *  @param[in] parameters A pointer to the gTokenParms object to be freed.
- */
+/** 
+ * \fn void gFreeParms(gTokenParms *parameters)
+ * \brief Frees a gTokenParms structure.
+ *
+ * Frees an allocated gTokenParms structure. Currently this just calls free
+ * but it is recommended this function be used.
+ *
+ * @param[in] parameters A pointer to the gTokenParms object to be freed.
+*/
 void gFreeParms(gTokenParms *parameters);
 
 
@@ -202,12 +223,15 @@ void gFreeParms(gTokenParms *parameters);
 // gToken
 // This is the struct that holds a token
 
-/** \enum gTokenType_e
- *  This is the starting nub of the token type list. It is a nub in that it is 
- *  meant to be contined by the program using gParse to include other token
- *  types the program might need. When making an enum of custom token types, 
- *  simply make the first new token type = tLastBaseToken.
- */
+/**
+ * \enum gTokenType_e
+ * \brief Base token types
+ *
+ * This is the starting nub of the token type list. It is a nub in that it is 
+ * meant to be contined by the program using gParse to include other token
+ * types the program might need. When making an enum of custom token types, 
+ * simply make the first new token type = tLastBaseToken.
+*/
 typedef enum
 {
    tUnknown,      //!< A token that could not be classified
@@ -227,10 +251,13 @@ typedef enum
 
 
 
-/** \struct gToken
- *  This is the struct that holds the actual tokens generated by the tokenizer
- *  and lexer.
- */
+/** 
+ * \struct gToken
+ * \brief Token structure.
+ * 
+ * This is the struct that holds the actual tokens generated by the tokenizer
+ * and lexer.
+*/
 typedef struct
 {
    int          type;     //!< Type holds the gTokenType_e or user value
@@ -240,28 +267,30 @@ typedef struct
 } gToken;
 
 
-/** \fn gToken *gCreateToken(const char *token, int type, int linenum, int charnum)
- *  \brief Creates a token.
+/**
+ * \fn gToken *gCreateToken(const char *token, int type, int linenum, int charnum)
+ * \brief Creates a token.
  *
- *  Creates and returns a single token struct.
+ * Creates and returns a single token struct.
  *
- *  @param[in] token The actual string contents of the new token
- *  @param[in] type The token type of the new token. \see gTokenType_e
- *  @param[in] linenum The line number the token occured on. 
- *  @param[in] linenum The column number the token occured on. 
- *  @return A new gToken object with copies of the token string and given info.
- */
+ * @param[in] token The actual string contents of the new token
+ * @param[in] type The token type of the new token. \see gTokenType_e
+ * @param[in] linenum The line number the token occured on. 
+ * @param[in] charnum The column number the token occured on. 
+ * @return A new gToken object with copies of the token string and given info.
+*/
 gToken *gCreateToken(const char *token, int type, int linenum, int charnum);
 
 
-/** \fn void gFreeToken(void *object)
- *  \brief Frees a token.
+/**
+ * \fn void gFreeToken(void *object)
+ * \brief Frees a token.
  *
- *  Frees a single token. Changed for use with gList. Use this function
- *  to free gToken objects created with gCreateToken.
+ * Frees a single token. Changed for use with gList. Use this function
+ * to free gToken objects created with gCreateToken.
  *
- *  @param[in] object The token to be freed.
- */
+ * @param[in] object The token to be freed.
+*/
 void gFreeToken(void *object);
 
 
@@ -271,14 +300,15 @@ void gFreeToken(void *object);
 // This object is the means by which the tokenizer actually does most of the 
 // work.
 
-/** \struct gTokenStream
- *  \brief Interface used to tokenize a gTextStream.
+/** 
+ * \struct gTokenStream
+ * \brief Interface used to tokenize a gTextStream.
  *
- *  This struct contains the parameters, text stream, and flags. It also is
- *  responsible for managing the token cache (see: gGetToken, and gClearTCache)
- *  These structs should really only be created with gCreateTokenStream and 
- *  freed with gFreeTokenStream.
- */
+ * This struct contains the parameters, text stream, and flags. It also is
+ * responsible for managing the token cache (see: gGetToken, and gClearTCache)
+ * These structs should really only be created with gCreateTokenStream and 
+ * freed with gFreeTokenStream.
+*/
 typedef struct gTokenStream
 {
    gTokenParms *parameters;      //!< Pointer to the parameters object
@@ -299,70 +329,75 @@ typedef struct gTokenStream
 
 
 
-/** \fn gTokenStream *gCreateTokenStream(gTokenParms *parms, gTextStream *stream, const char *name)
- *  \brief Creates a token stream.
+/**
+ * \fn gTokenStream *gCreateTokenStream(gTokenParms *parms, gTextStream *stream, const char *name)
+ * \brief Creates a token stream.
  *
- *  Creates a new tokenstream from the given parameters. If 'parms' or 'stream' is 
- *  NULL, the function will not create a new token stream and will return NULL.
+ * Creates a new tokenstream from the given parameters. If 'parms' or 'stream' is 
+ * NULL, the function will not create a new token stream and will return NULL.
  *
- *  @param[in] parms Parameters the tokenizer/lexer should use for this stream
- *  @param[in] stream Text stream the tokens should come from.
- *  @param[in] name The name of the stream (used for error reporting)
- *  @returns New token stream.
- */
+ * @param[in] parms Parameters the tokenizer/lexer should use for this stream
+ * @param[in] stream Text stream the tokens should come from.
+ * @param[in] name The name of the stream (used for error reporting)
+ * @returns New token stream.
+*/
 gTokenStream *gCreateTokenStream(gTokenParms *parms, gTextStream *stream, const char *name);
 
 
-/** \fn void gFreeTokenStream(gTokenStream *tstream)
- *  \brief Frees a token stream made with gCreateTokenStream
+/**
+ * \fn void gFreeTokenStream(gTokenStream *tstream)
+ * \brief Frees a token stream made with gCreateTokenStream
  *
- *  Frees a tokenstream made with gCreateTokenStream. It should be noted this
- *  function does NOT free the parms object or the stream. Those need to be freed
- *  separately after the stream is freed.
+ * Frees a tokenstream made with gCreateTokenStream. It should be noted this
+ * function does NOT free the parms object or the stream. Those need to be freed
+ * separately after the stream is freed.
  *
- *  @param[in] tstream The stream to be freed.
- */
+ * @param[in] tstream The stream to be freed.
+*/
 void gFreeTokenStream(gTokenStream *tstream);
 
 
-/** \fn gToken *gGetNextToken(gTokenStream *tstream)
- *  \brief Returns the next token in the stream.
+/**
+ * \fn gToken *gGetNextToken(gTokenStream *tstream)
+ * \brief Returns the next token in the stream.
  *
- *  Parses, lexes and returns the next token in the stream. This function does
- *  not cache the tokens, so the token this function returns has to be freed
- *  manually. It's generally best to avoid this function and use gGetToken.
+ * Parses, lexes and returns the next token in the stream. This function does
+ * not cache the tokens, so the token this function returns has to be freed
+ * manually. It's generally best to avoid this function and use gGetToken.
  *
- *  @param[in] tstream The token stream to get the next token from.
- *  @return Next token in the stream.
- */
+ * @param[in] tstream The token stream to get the next token from.
+ * @return Next token in the stream.
+*/
 gToken *gGetNextToken(gTokenStream *tstream);
 
 
-/** \fn gToken *gGetToken(gTokenStream *tstream, int index)
- *  \brief Returns a token at the given index in the stream.
+/**
+ * \fn gToken *gGetToken(gTokenStream *tstream, int index)
+ * \brief Returns a token at the given index in the stream.
  *
- *  Returns the token at the given index. Index must be >= the first token in the
- *  streams cache--that is, >= strea->cfirst. If index > stream->clast, 
- *  the cache of the stream is read-ahead to index. Returns NULL if index was less
- *  than cfirst. If not enough tokens could be parsed from the stream to get to
- *  index, the last token in the stream is returned (tEOF). This function should
- *  NOT be used with the same stream as gGetNextToken.
+ * Returns the token at the given index. Index must be >= the first token in the
+ * streams cache--that is, >= strea->cfirst. If index > stream->clast, 
+ * the cache of the stream is read-ahead to index. Returns NULL if index was less
+ * than cfirst. If not enough tokens could be parsed from the stream to get to
+ * index, the last token in the stream is returned (tEOF). This function should
+ * NOT be used with the same stream as gGetNextToken.
  *
- *  @param[in] tstream The token stream to get the token from.
- *  @param[in] index The index within the stream to get the token from.
- *  @return Token at index.
- */
+ * @param[in] tstream The token stream to get the token from.
+ * @param[in] index The index within the stream to get the token from.
+ * @return Token at index.
+*/
 gToken *gGetToken(gTokenStream *tstream, int index);
 
 
-/** \fn void gClearTCache(gTokenStream *tstream)
- *  \brief Clears the token cache inside a token stream.
+/**
+ * \fn void gClearTCache(gTokenStream *tstream)
+ * \brief Clears the token cache inside a token stream.
  *
- *  Clears the token cache within the stream. All but the very last token cached 
- *  are freed.
+ * Clears the token cache within the stream. All but the very last token cached 
+ * are freed.
  *
- *  @param[in] tstream Token stream to clear the cache of.
- */
+ * @param[in] tstream Token stream to clear the cache of.
+*/
 void gClearTCache(gTokenStream *tstream);
 
 
