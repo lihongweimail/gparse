@@ -31,11 +31,20 @@
 #define GBOOL_H
 
 #ifndef __cplusplus
- 
-typedef int bool;
 
-#define true 1
-#define false 0
+/**
+ * \file gbool.h
+ * \brief Provides a bool type for C environments
+ *
+ * This file simply provides a bool typedef and marcros for true and false
+ * for the C environment. If __cplusplus is defined, this file does nothing.
+*/
+
+
+typedef int bool; //!< Boolean type definition
+
+#define true 1    //!< Boolean true
+#define false 0   //!< Boolean false.
 
 #endif
 
