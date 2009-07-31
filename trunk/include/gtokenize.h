@@ -318,7 +318,8 @@ typedef struct gTokenStream
 
    char        *name;            //!< Name of the file or stream the tokens are from.
 
-   int         linenum, charnum; //!< The current linenumber and char number
+   int         linenum;          //!< Current line number within the text stream
+   int         charnum;          //!< Current char number within the text stream
 
    bool        endofstream;      //!< Set when gGetNextToken reaches the end of the stream
    

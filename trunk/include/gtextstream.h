@@ -66,6 +66,7 @@ extern "C"
 */
 typedef struct gTextStream
 {
+#ifndef DOXYGEN_IGNORE
    bool           eofflag;
    int            streamlen;
 
@@ -78,6 +79,7 @@ typedef struct gTextStream
    char*          (*readahead)(struct gTextStream *, unsigned int);
    void           (*seek)(struct gTextStream *, int);
    void           (*freestream)(struct gTextStream *);
+#endif
 } gTextStream;
 
 

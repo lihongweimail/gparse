@@ -52,7 +52,9 @@ extern "C"
 // Generalized stack container object.
 
 
-typedef struct gStackEntry gStackEntry; //!< Typedef of struct gStackEntry
+#ifndef DOXYGEN_IGNORE
+typedef struct gStackEntry gStackEntry;
+#endif
 
 /**
  * \struct gStackEntry
