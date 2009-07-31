@@ -50,6 +50,7 @@
 // ms - Subtracts the number in the main register from the memory register
 // mr - Sets the main register equal to the memory register
 // mc - Clears the memory register
+// exit - Quit the program
 
 // This example only uses the tokenizer/lexer it does not use the token
 // pattern feature.
@@ -71,6 +72,7 @@ enum calcTypes
    tMS,
    tMR,
    tMC,
+   tExit,
 };
 
 
@@ -83,7 +85,7 @@ gKeyword calcKeys[] = {
 {"clear",  tClear, NULL},
 {"add",    tAdd,   NULL},
 {"sub",    tSub,   NULL},
-{"dib",    tDiv,   NULL},
+{"div",    tDiv,   NULL},
 {"mul",    tMul,   NULL},
 {"root",   tRoot,  NULL},
 {"square", tSquare,NULL},
@@ -91,28 +93,31 @@ gKeyword calcKeys[] = {
 {"ms",     tMS,    NULL},
 {"mr",     tMR,    NULL},
 {"mc",     tMC,    NULL},
+{"exit",   tExit,  NULL},
 {NULL}};
 
 
 // This example won't require any symbol types or escape characters
 
 
+// These will be the registers
+double main_reg = 0.0, memory_reg = 0.0;
+// Error count
+int    ecount = 0;
+
+
+// Prototype for the parsing function
+int runCommand(gTokenStream *tokstrm);
+
 
 int main (int argc, char **argv)
 {
    // First, create the parameters object.
    gTokenParms  *parms = gNewParms();
-   gTextStream  *txtstr;
-   gTokenStream *tokstr;
-   gToken       *tok;
+   gTextStream  *txtstrm;
+   gTokenStream *tokstrm;
+   char         inbuffer[100];
    
-   // These will be the registers
-   double main = 0.0, memory = 0.0;
-   // And our parameter
-   double parameter;
-   // Error count
-   int    ecount = 0;
-
    // Set some parameters:
    // Comments can be started with ' and continue to the end of the line...
    parms->comment1s = "'";
@@ -126,141 +131,159 @@ int main (int argc, char **argv)
    // The keyword list we made.
    parms->keywlist = calcKeys;
    
-   printf("Welcome to Calc, the gParse test program!\nReading instructions from calc.txt...\n\n");
+   printf("Welcome to Calc, the gParse test program!\n");
 
-   // Now! Open the text stream.
-   if(!(txtstr = gStreamFromFilename("calc.txt")))
-   {
-      printf("Failed to open file!\n");
-      return 1;
-   }
+   txtstrm = gStreamFromMemory(inbuffer, 100, false);
 
    // Create the token stream.
-   tokstr = gCreateTokenStream(parms, txtstr, "calc.txt");
+   tokstrm = gCreateTokenStream(parms, txtstrm, "User input");
 
-   // Print our state
-   printf("Main: %f, Memory: %f\n", main, memory);
-
-   // Run the program!
    while(1)
    {
-      // getNextToken will always return a token, at the end of the file it
-      // will just return an EOF marker every time it's called.
-      tok = gGetNextToken(tokstr);
+      // Print out state
+      printf("Main: %.2f, Memory: %.2f\nPlease enter command:", main_reg, memory_reg);
 
-      if(tok->type == tEOF)
+      // Get a command.
+      fgets(inbuffer, 99, stdin);
+
+      if(!runCommand(tokstrm))
          break;
 
-      // Run the instructions!
-      switch(tok->type)
-      {
-         // First the instructions that don't require a parameter
-         case tClear:
-            printf("Main register cleared\n");
-            main = 0.0;
-            break;
-         case tRoot:
-            printf("Square root of main register\n");
-            main = sqrt(main);
-            break;
-         case tSquare:
-            printf("Squaring main register\n");
-            main *= main;
-            break;
-         case tMA:
-            printf("Adding main to memory\n");
-            memory += main;
-            break;
-         case tMS:
-            printf("Subtracting main from memory\n");
-            memory -= main;
-            break;
-         case tMR:
-            printf("Recalling memory to main\n");
-            main = memory;
-            break;
-         case tMC:
-            printf("Memory register cleared\n");
-            memory = 0.0;
-            break;
-         case tAdd:
-            // Get the next token! Should be our parameter!
-            tok = gGetNextToken(tokstr);
+      // Reset the token stream
+      gResetTokenStream(tokstrm);
 
-            // gToken is a struct. The actual string is in tok->token.
-            if(tok->type == tInteger || tok->type == tDecimal)
-            {
-               parameter = atof(tok->token);
-               printf("Adding %f to main register\n", parameter);
-               main += parameter;
-            }
-            else
-            {
-               printf("parameter was not a number\n");
-               ecount++;
-            }
-            break;
-         case tSub:
-            // Pretty much same as add
-            tok = gGetNextToken(tokstr);
-            if(tok->type == tInteger || tok->type == tDecimal)
-            {
-               parameter = atof(tok->token);
-               printf("Subtracting %f from main register\n", parameter);
-               main -= parameter;
-            }
-            else
-            {
-               printf("parameter was not a number\n");
-               ecount++;
-            }
-            break;
-         case tDiv:
-            tok = gGetNextToken(tokstr);
-            if(tok->type == tInteger || tok->type == tDecimal)
-            {
-               parameter = atof(tok->token);
-               printf("Dividing main register by %f\n", parameter);
-               main /= parameter;
-            }
-            else
-            {
-               printf("parameter was not a number\n");
-               ecount++;
-            }
-            break;
-         case tMul:
-            tok = gGetNextToken(tokstr);
-            if(tok->type == tInteger || tok->type == tDecimal)
-            {
-               parameter = atof(tok->token);
-               printf("Multiplying main register by %f\n", parameter);
-               main /= parameter;
-            }
-            else
-            {
-               printf("parameter was not a number\n");
-               ecount++;
-            }
-            break;
-      }
-
-      // If there was a missing parameter, we might already be at a linebreak..
-      if(tok->type != tLineBreak)
-      {
-         // The next token should be the linebreak...
-         tok = gGetNextToken(tokstr);
-
-         if(tok->type != tLineBreak && tok->type != tEOF)
-         {
-            printf("\nLinebreak could not be found!\n");
-            ecount++;
-         }
-      }
-
-      // Print our state
-      printf("Main: %f, Memory: %f\n\n", main, memory);
+      printf("\n");
    }
 
    return 0;
+}
+
+
+
+
+int runCommand(gTokenStream *tokstrm)
+{
+   double parameter;
+   gToken *tok;
+
+   // getNextToken will always return a token, at the end of the file it
+   // will just return an EOF marker every time it's called.
+   tok = gGetNextToken(tokstrm);
+
+   if(tok->type == tEOF || tok->type == tLineBreak)
+      return 0;
+
+   // Run the instructions!
+   switch(tok->type)
+   {
+      // First the instructions that don't require a parameter
+      case tExit:
+         return 0;
+      case tClear:
+         printf("Main register cleared\n");
+         main_reg = 0.0;
+         break;
+      case tRoot:
+         printf("Square root of main register\n");
+         main_reg = sqrt(main_reg);
+         break;
+      case tSquare:
+         printf("Squaring main register\n");
+         main_reg *= main_reg;
+         break;
+      case tMA:
+         printf("Adding main to memory\n");
+         memory_reg += main_reg;
+         break;
+      case tMS:
+         printf("Subtracting main from memory\n");
+         memory_reg -= main_reg;
+         break;
+      case tMR:
+         printf("Recalling memory to main\n");
+         main_reg = memory_reg;
+         break;
+      case tMC:
+         printf("Memory register cleared\n");
+         memory_reg = 0.0;
+         break;
+      case tAdd:
+         // Get the next token! Should be our parameter!
+         tok = gGetNextToken(tokstrm);
+
+         // gToken is a struct. The actual string is in tok->token.
+         if(tok->type == tInteger || tok->type == tDecimal)
+         {
+            parameter = atof(tok->token);
+            printf("Adding %.2f to main register\n", parameter);
+            main_reg += parameter;
+         }
+         else
+         {
+            printf("parameter was not a number\n");
+            ecount++;
+         }
+         break;
+      case tSub:
+         // Pretty much same as add
+         tok = gGetNextToken(tokstrm);
+         if(tok->type == tInteger || tok->type == tDecimal)
+         {
+            parameter = atof(tok->token);
+            printf("Subtracting %.2f from main register\n", parameter);
+            main_reg -= parameter;
+         }
+         else
+         {
+            printf("parameter was not a number\n");
+            ecount++;
+         }
+         break;
+      case tDiv:
+         tok = gGetNextToken(tokstrm);
+         if(tok->type == tInteger || tok->type == tDecimal)
+         {
+            parameter = atof(tok->token);
+            printf("Dividing main register by %.2f\n", parameter);
+            main_reg /= parameter;
+         }
+         else
+         {
+            printf("parameter was not a number\n");
+            ecount++;
+         }
+         break;
+      case tMul:
+         tok = gGetNextToken(tokstrm);
+         if(tok->type == tInteger || tok->type == tDecimal)
+         {
+            parameter = atof(tok->token);
+            printf("Multiplying main register by %.2f\n", parameter);
+            main_reg *= parameter;
+         }
+         else
+         {
+            printf("parameter was not a number\n");
+            ecount++;
+         }
+         break;
+      default:
+         printf("Error: Invalid command '%s'\n", tok->token);
+         return 1;
+   }
+
+   // If there was a missing parameter, we might already be at a linebreak..
+   if(tok->type != tLineBreak)
+   {
+      // The next token should be the linebreak...
+      tok = gGetNextToken(tokstrm);
+
+      if(tok->type != tLineBreak && tok->type != tEOF)
+      {
+         printf("\nLinebreak could not be found!\n");
+         ecount++;
+      }
+   }
+
+   return 1;
 }
