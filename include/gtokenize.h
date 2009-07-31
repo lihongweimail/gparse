@@ -346,34 +346,34 @@ gTokenStream *gCreateTokenStream(gTokenParms *parms, gTextStream *stream, const 
 
 
 /**
- * \fn void gFreeTokenStream(gTokenStream *tstream)
+ * \fn void gFreeTokenStream(gTokenStream *tokstrm)
  * \brief Frees a token stream made with gCreateTokenStream
  *
  * Frees a tokenstream made with gCreateTokenStream. It should be noted this
  * function does NOT free the parms object or the stream. Those need to be freed
  * separately after the stream is freed.
  *
- * @param[in] tstream The stream to be freed.
+ * @param[in] tokstrm The stream to be freed.
 */
-void gFreeTokenStream(gTokenStream *tstream);
+void gFreeTokenStream(gTokenStream *tokstrm);
 
 
 /**
- * \fn gToken *gGetNextToken(gTokenStream *tstream)
+ * \fn gToken *gGetNextToken(gTokenStream *tokstrm)
  * \brief Returns the next token in the stream.
  *
  * Parses, lexes and returns the next token in the stream. This function does
  * not cache the tokens, so the token this function returns has to be freed
  * manually. It's generally best to avoid this function and use gGetToken.
  *
- * @param[in] tstream The token stream to get the next token from.
+ * @param[in] tokstrm The token stream to get the next token from.
  * @return Next token in the stream.
 */
-gToken *gGetNextToken(gTokenStream *tstream);
+gToken *gGetNextToken(gTokenStream *tokstrm);
 
 
 /**
- * \fn gToken *gGetToken(gTokenStream *tstream, int index)
+ * \fn gToken *gGetToken(gTokenStream *tokstrm, int index)
  * \brief Returns a token at the given index in the stream.
  *
  * Returns the token at the given index. Index must be >= the first token in the
@@ -383,23 +383,23 @@ gToken *gGetNextToken(gTokenStream *tstream);
  * index, the last token in the stream is returned (tEOF). This function should
  * NOT be used with the same stream as gGetNextToken.
  *
- * @param[in] tstream The token stream to get the token from.
+ * @param[in] tokstrm The token stream to get the token from.
  * @param[in] index The index within the stream to get the token from.
  * @return Token at index.
 */
-gToken *gGetToken(gTokenStream *tstream, int index);
+gToken *gGetToken(gTokenStream *tokstrm, int index);
 
 
 /**
- * \fn void gClearTCache(gTokenStream *tstream)
+ * \fn void gClearTCache(gTokenStream *tokstrm)
  * \brief Clears the token cache inside a token stream.
  *
  * Clears the token cache within the stream. All but the very last token cached 
  * are freed.
  *
- * @param[in] tstream Token stream to clear the cache of.
+ * @param[in] tokstrm Token stream to clear the cache of.
 */
-void gClearTCache(gTokenStream *tstream);
+void gClearTCache(gTokenStream *tokstrm);
 
 
 #include "gtpattern.h"

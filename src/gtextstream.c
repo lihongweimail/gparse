@@ -624,33 +624,33 @@ gTextStream *gStreamFromMemory(char *memory, int length, bool owner)
 
 // gSeekPos
 // Seeks an absolute position within the stream
-void gSeekPos(gTextStream *stream, int pos)
+void gSeekPos(gTextStream *txtstrm, int pos)
 {
    int offset;
 
    if(pos < 0)
       pos = 0;
-   if(pos >= stream->streamlen)
-      pos = stream->streamlen - 1;
+   if(pos >= txtstrm->streamlen)
+      pos = txtstrm->streamlen - 1;
 
-   if(stream->seek = seekMemory)
+   if(txtstrm->seek = seekMemory)
    {
-      memStream *sd = (memStream *)stream->data;
+      memStream *sd = (memStream *)txtstrm->data;
       offset = pos - (sd->rover - sd->memory);
    }
    else
    {
-      fileStream *fs = (fileStream *)stream->data;
+      fileStream *fs = (fileStream *)txtstrm->data;
       offset = pos - fs->fbufferpos;
    }
 
-   gSeek(stream, offset);
+   gSeek(txtstrm, offset);
 }
 
 
 // gStreamEnd
 // Returns true of the stream has reached the end of the buffer/file.
-bool gStreamEnd(gTextStream *stream)
+bool gStreamEnd(gTextStream *txtstrm)
 {
-   return stream->eofflag;
+   return txtstrm->eofflag;
 }
