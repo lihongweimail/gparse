@@ -23,7 +23,7 @@ EXPORTS
     gInitStack                @20
     gFreeStack                @21
     gClearStack               @22
-    gPushObject               @23
+    gPushEntry                @23
     gGetStackTop              @24
     gGetStackSize             @25
     gPopStack                 @26

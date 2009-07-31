@@ -37,6 +37,26 @@
 #include <string.h>
 
 
+// ----------------------------------------------------------------------------
+// Internally used typedefs:
+
+typedef struct
+{
+   // Index of the current step
+   int  stepIndex;
+
+   // Index of the first step this stack entry called, or the most recent fallback
+   // point set in the current stack entry.
+   int  backIndex;
+
+   // Index of the last step this stack entry called with the sfSetFallback flag
+   // This is -1 if there have been none.
+   int  fallbackIndex;
+
+   // Current error handling function for this stack entry
+   tpErrHook  errHook;
+} tpStackEntry;
+
 
 // ----------------------------------------------------------------------------
 // Standard ops:
@@ -222,7 +242,7 @@ int tpExecutePattern(tPattern *p)
       gClearStack(p->stack);
 
    // Create the first stack entry
-   gPushObject(p->stack, top = newStackEntry(p->i, NULL));
+   gPushEntry(p->stack, top = newStackEntry(p->i, NULL));
 
    while((t = gGetToken(p->tstream, p->i)) != NULL)
    {
@@ -332,7 +352,7 @@ int tpExecutePattern(tPattern *p)
             else
                top->stepIndex ++;
 
-            gPushObject(p->stack, top = newStackEntry(substep - p->stepList, top->errHook));
+            gPushEntry(p->stack, top = newStackEntry(substep - p->stepList, top->errHook));
             break;
          case scGoto:
             top->stepIndex = substep - p->stepList;

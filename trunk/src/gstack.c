@@ -67,13 +67,13 @@ void gInitStack(gStack *stack, void (*freeFunc)(void *))
 // freestructflag is set in the given list struct, the struct itself is freed.
 void gFreeStack(gStack *s)
 {
-   gStackItem *it, *pr;
+   gStackEntry *it, *pr;
 
    for(it = s->top; it; it = pr)
    {
       pr = it->prev;
 
-      s->freeFunc(it->item);
+      s->freeFunc(it->entry);
       free(it);
    }
 
@@ -96,13 +96,13 @@ void gFreeStack(gStack *s)
 // structures allocated.
 void gClearStack(gStack *s)
 {
-   gStackItem *it, *pr;
+   gStackEntry *it, *pr;
 
    for(it = s->top; it; it = pr)
    {
       pr = it->prev;
 
-      s->freeFunc(it->item);
+      s->freeFunc(it->entry);
 
       it->prev = s->unused;
       s->unused = it;
@@ -112,11 +112,11 @@ void gClearStack(gStack *s)
 }
 
 
-// gPushObject
+// gPushEntry
 // Adds the given object to the end of the given stack.
-void gPushObject(gStack *s, void *object)
+void gPushEntry(gStack *s, void *object)
 {
-   gStackItem *it;
+   gStackEntry *it;
 
    if(!object)
       return;
@@ -127,9 +127,9 @@ void gPushObject(gStack *s, void *object)
       s->unused = it->prev;
    }
    else
-      it = malloc(sizeof(gStackItem));
+      it = malloc(sizeof(gStackEntry));
 
-   it->item = object;
+   it->entry = object;
    it->prev = s->top;
    s->top = it;
 }
@@ -139,7 +139,7 @@ void gPushObject(gStack *s, void *object)
 // Returns the current top item on the stack
 void *gGetStackTop(gStack *s)
 {
-   return s->top ? s->top->item : NULL;
+   return s->top ? s->top->entry : NULL;
 }
 
 
@@ -147,7 +147,7 @@ void *gGetStackTop(gStack *s)
 // Polls the stack and returns the number of entries in the stack.
 int gGetStackSize(gStack *s)
 {
-   gStackItem *it;
+   gStackEntry *it;
    int count;
 
    for(it = s->top; it; it = it->prev)
@@ -162,18 +162,18 @@ int gGetStackSize(gStack *s)
 // the stack is empty).
 void *gPopStack(gStack *s)
 {
-   gStackItem *it, *ret;
+   gStackEntry *it, *ret;
 
    if(!(it = s->top))
       return NULL;
 
    ret = s->top = it->prev;
 
-   s->freeFunc(it->item);
+   s->freeFunc(it->entry);
    it->prev = s->unused;
    s->unused = it;
 
-   return ret->item;
+   return ret->entry;
 }
 
 

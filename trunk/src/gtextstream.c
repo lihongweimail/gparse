@@ -38,6 +38,41 @@
 // The buffered text object allows the tokenizer to tokenize a pre-allocated 
 // buffer or from an open file stream.
 
+
+typedef struct
+{
+   // Memory buffers.
+   // Simple, easy to manage.
+   char           *memory;
+   const char     *rover;
+   bool           owner;
+
+   char           *tempstr;
+   int            buffermax;
+} memStream;
+
+typedef struct
+{
+   // File streams
+   // A bit trickier. The input from a filestream needs to be buffered to
+   // an extent, but not the entire file. The temp buffer starts at 10 chars
+   // and expands each time gGetChars is called with a number > than the
+   // buffer size.
+   char           *fbuffer;
+   char           *tempstr;
+   int            buffermax;
+   // fbufferlen is the length of the string inside the buffer.
+   int            fbufferlen;
+
+   // fbufferpos is the position in the filestream the buffer starts
+   int            fbufferpos;
+
+   int            fpos;
+   FILE           *f;
+} fileStream;
+
+
+
 static gTextStream *newStream()
 {
    gTextStream *ret = (gTextStream *)malloc(sizeof(gTextStream));
@@ -59,27 +94,28 @@ static gTextStream *newStream()
 // will shift the data in the buffer, and clear the newly exposed data.
 void shiftFileBuffer(gTextStream *stream, int offset)
 {
-   char        *buffer = stream->fbuffer; 
-   int         size = stream->fbufferlen;
+   fileStream  *fs = (fileStream *)stream->data;
+   char        *buffer = fs->fbuffer; 
+   int         size = fs->fbufferlen;
    int         i;
 
 
-   if(stream->fbufferpos + offset < 0)
-      offset = -stream->fbufferpos;
+   if(fs->fbufferpos + offset < 0)
+      offset = -fs->fbufferpos;
 
-   stream->fbufferpos += offset;
+   fs->fbufferpos += offset;
 
-   if(stream->fbufferpos >= stream->streamlen)
+   if(fs->fbufferpos >= stream->streamlen)
    {
-      stream->fbuffer[0] = 0;
-      stream->fbufferlen = 0;
-      stream->fbufferpos = stream->streamlen;
+      fs->fbuffer[0] = 0;
+      fs->fbufferlen = 0;
+      fs->fbufferpos = stream->streamlen;
       stream->eofflag = true;
       return;
    }
 
-   if(stream->fbufferpos + size > stream->streamlen)
-      stream->fbufferlen = stream->streamlen - stream->fbufferpos;
+   if(fs->fbufferpos + size > stream->streamlen)
+      fs->fbufferlen = stream->streamlen - fs->fbufferpos;
 
    if(offset == 0)
       return;
@@ -114,7 +150,8 @@ void shiftFileBuffer(gTextStream *stream, int offset)
 // functions.
 static void fileSeek(gTextStream *stream, int offset, int type)
 {
-   int position = stream->fpos;
+   fileStream  *fs = (fileStream *)stream->data;
+   int         position = fs->fpos;
 
    if(type == SEEK_SET)
       position = offset;
@@ -138,8 +175,8 @@ static void fileSeek(gTextStream *stream, int offset, int type)
    else
       stream->eofflag = false;
 
-   fseek(stream->f, position, SEEK_SET);
-   stream->fpos = position;
+   fseek(fs->f, position, SEEK_SET);
+   fs->fpos = ftell(fs->f);
 }
 
 
@@ -147,13 +184,14 @@ static void fileSeek(gTextStream *stream, int offset, int type)
 // pointer and internal data.
 static int fileRead(void *data, int size, int count, gTextStream *stream)
 {
-   int ret;
+   fileStream  *fs = (fileStream *)stream->data;
+   int         ret;
 
    if(stream->eofflag)
       return 0;
 
-   ret = fread(data, size, count, stream->f);
-   stream->fpos += ret;
+   ret = fread(data, size, count, fs->f);
+   fs->fpos += ret;
    return ret;
 }
 
@@ -163,19 +201,20 @@ static int fileRead(void *data, int size, int count, gTextStream *stream)
 // input buffer ahead one character. Returns 0 on EOF
 static char getCharFile(gTextStream *stream)
 {
-   char ret = 0;
+   fileStream  *fs = (fileStream *)stream->data;
+   char        ret = 0;
 
    if(stream->eofflag)
       return 0;
 
-   ret = stream->fbuffer[0];
+   ret = fs->fbuffer[0];
    shiftFileBuffer(stream, 1);
    
-   if(stream->fpos < stream->streamlen)
-      fileRead(&stream->fbuffer[stream->fbufferlen - 1], 1, 1, stream);
+   if(fs->fpos < stream->streamlen)
+      fileRead(&fs->fbuffer[fs->fbufferlen - 1], 1, 1, stream);
 
    // An empty buffer means EOF
-   if(stream->fbufferlen == 0)
+   if(fs->fbufferlen == 0)
    {
       stream->eofflag = true;
       return 0;
@@ -189,14 +228,15 @@ static char getCharFile(gTextStream *stream)
 // Returns the next character in the stream, but does not move the buffer.
 static char readCharFile(gTextStream *stream)
 {
-   char ret = 0;
+   fileStream  *fs = (fileStream *)stream->data;
+   char        ret = 0;
 
    if(stream->eofflag)
       return 0;
 
-   ret = stream->fbuffer[0];
+   ret = fs->fbuffer[0];
 
-   if(stream->fbufferlen == 0)
+   if(fs->fbufferlen == 0)
       stream->eofflag = true;
 
    return ret;
@@ -209,35 +249,36 @@ static char readCharFile(gTextStream *stream)
 // or NULL on EOF.
 static char *readAheadFile(gTextStream *stream, unsigned int count)
 {
-   int toread;
+   fileStream  *fs = (fileStream *)stream->data;
+   int         toread;
 
    if(stream->eofflag)
       return NULL;
 
    // Check for EOF
-   if(stream->fbufferpos >= stream->streamlen)
+   if(fs->fbufferpos >= stream->streamlen)
    {
-      stream->fbufferlen = 0;
-      stream->fbuffer[0] = 0;
+      fs->fbufferlen = 0;
+      fs->fbuffer[0] = 0;
 
       stream->eofflag = true;
       return NULL;
    }
 
    // Make sure the temp buffers are big enough for the requested data.
-   if(stream->buffermax <= (int)count)
+   if(fs->buffermax <= (int)count)
    {
       // read-ahead has exceeded buffer length, so increase buffer size.
       int newsize = count + 1;
 
-      stream->fbuffer = (char *)realloc(stream->fbuffer, newsize);
-      stream->tempstr = (char *)realloc(stream->tempstr, newsize);
-      memset(stream->fbuffer + stream->buffermax, 0, newsize - stream->buffermax); 
-      stream->buffermax = newsize;
+      fs->fbuffer = (char *)realloc(fs->fbuffer, newsize);
+      fs->tempstr = (char *)realloc(fs->tempstr, newsize);
+      memset(fs->fbuffer + fs->buffermax, 0, newsize - fs->buffermax); 
+      fs->buffermax = newsize;
    }
 
    // The characters needed might already be buffered. 
-   toread = count - stream->fbufferlen;
+   toread = count - fs->fbufferlen;
 
    if(toread > 0)
    {
@@ -245,24 +286,24 @@ static char *readAheadFile(gTextStream *stream, unsigned int count)
       // If the function is called requesting MAX_UINT characters, the function
       // will currently try to allocate that amount even if the file only has
       // one character left!!
-      if(stream->fpos + toread >= stream->streamlen)
-         toread = stream->streamlen - stream->fpos;
+      if(fs->fpos + toread >= stream->streamlen)
+         toread = stream->streamlen - fs->fpos;
 
-      fileRead(stream->fbuffer + stream->fbufferlen, 1, toread, stream);
-      stream->fbuffer[stream->buffermax - 1] = 0;
+      fileRead(fs->fbuffer + fs->fbufferlen, 1, toread, stream);
+      fs->fbuffer[fs->buffermax - 1] = 0;
    }
 
-   if(stream->fbufferlen == 0)
+   if(fs->fbufferlen == 0)
    {
       stream->eofflag = true;
       return NULL;
    }
 
    // tempstr is returned because it is NULL-terminated.
-   strncpy(stream->tempstr, stream->fbuffer, count);
-   stream->tempstr[count] = 0;
+   strncpy(fs->tempstr, fs->fbuffer, count);
+   fs->tempstr[count] = 0;
 
-   return stream->tempstr;
+   return fs->tempstr;
 }
 
 
@@ -270,8 +311,9 @@ static char *readAheadFile(gTextStream *stream, unsigned int count)
 
 static void seekFile(gTextStream *stream, int offset)
 {
-   int pos = stream->fbufferpos;
-   int len;
+   fileStream  *fs = (fileStream *)stream->data;
+   int         pos = fs->fbufferpos;
+   int         len;
 
    if(offset == 0 || (offset > 0 && stream->eofflag))
       return;
@@ -279,41 +321,41 @@ static void seekFile(gTextStream *stream, int offset)
    shiftFileBuffer(stream, offset);
 
    if(offset < 0)
-      offset = pos - stream->fbufferpos;
+      offset = pos - fs->fbufferpos;
    else
-      offset = stream->fbufferpos - pos;
+      offset = fs->fbufferpos - pos;
 
-   pos = stream->fbufferpos;
+   pos = fs->fbufferpos;
 
    if(pos >= stream->streamlen)
    {
       fileSeek(stream, 1, SEEK_END);
-      stream->fbufferpos = stream->streamlen;
-      stream->fbufferlen = 0;
-      stream->fbuffer[0] = 0;
+      fs->fbufferpos = stream->streamlen;
+      fs->fbufferlen = 0;
+      fs->fbuffer[0] = 0;
       stream->eofflag = true;
    }
    else
    {
-      if(abs(offset) >= stream->fbufferlen)
+      if(abs(offset) >= fs->fbufferlen)
       {
          int clamped;
-         len = stream->buffermax - 1;
-         if(stream->fbufferpos + len > stream->streamlen)
-            len = stream->streamlen - stream->fbufferpos;
+         len = fs->buffermax - 1;
+         if(fs->fbufferpos + len > stream->streamlen)
+            len = stream->streamlen - fs->fbufferpos;
 
-         if(stream->fpos != stream->fbufferpos)
-            fileSeek(stream, stream->fbufferpos, SEEK_SET);
+         if(fs->fpos != fs->fbufferpos)
+            fileSeek(stream, fs->fbufferpos, SEEK_SET);
          
          if(!stream->eofflag)
          {
-            clamped = fileRead(stream->fbuffer, 1, len, stream);
+            clamped = fileRead(fs->fbuffer, 1, len, stream);
 
-            stream->fbufferlen = clamped;
-            stream->fbuffer[clamped] = 0;
+            fs->fbufferlen = clamped;
+            fs->fbuffer[clamped] = 0;
          }
 
-         if(stream->fbufferlen == 0)
+         if(fs->fbufferlen == 0)
             stream->eofflag = true;
       }
       else
@@ -322,32 +364,32 @@ static void seekFile(gTextStream *stream, int offset)
          {
             int readlen = -offset;
 
-            if(stream->fpos != stream->fbufferpos)
-               fileSeek(stream, stream->fbufferpos, SEEK_SET);
+            if(fs->fpos != fs->fbufferpos)
+               fileSeek(stream, fs->fbufferpos, SEEK_SET);
 
-            fileRead(stream->fbuffer, 1, readlen, stream);
+            fileRead(fs->fbuffer, 1, readlen, stream);
          }
          else
          {
-            int keeplen = stream->fbufferlen - offset;
-            int readlen = stream->buffermax - 1 - keeplen;
+            int keeplen = fs->fbufferlen - offset;
+            int readlen = fs->buffermax - 1 - keeplen;
             int clamped;
 
-            if(stream->fpos != stream->fbufferpos + keeplen)
-               fileSeek(stream, stream->fbufferpos + keeplen, SEEK_SET);
+            if(fs->fpos != fs->fbufferpos + keeplen)
+               fileSeek(stream, fs->fbufferpos + keeplen, SEEK_SET);
 
-            if(stream->fpos < stream->streamlen)
-               clamped = fileRead(stream->fbuffer + keeplen, 1, readlen, stream);
+            if(fs->fpos < stream->streamlen)
+               clamped = fileRead(fs->fbuffer + keeplen, 1, readlen, stream);
             else
                clamped = 0;
 
-            stream->fbufferlen = keeplen + clamped;
+            fs->fbufferlen = keeplen + clamped;
 
-            if(stream->fbufferlen == 0)
+            if(fs->fbufferlen == 0)
                stream->eofflag = true;
          }
 
-         stream->fbuffer[stream->fbufferlen] = 0;
+         fs->fbuffer[fs->fbufferlen] = 0;
       }
    }
 }
@@ -356,13 +398,17 @@ static void seekFile(gTextStream *stream, int offset)
 
 static void freeStreamFile(gTextStream *stream)
 {
-   if(stream->fbuffer)
-      free(stream->fbuffer);
+   fileStream  *fs = (fileStream *)stream->data;
 
-   if(stream->tempstr)
-      free(stream->tempstr);
+   if(fs->fbuffer)
+      free(fs->fbuffer);
 
-   fclose(stream->f);
+   if(fs->tempstr)
+      free(fs->tempstr);
+
+   fclose(fs->f);
+
+   free(fs);
 
    free(stream);
 }
@@ -372,35 +418,37 @@ static void freeStreamFile(gTextStream *stream)
 
 gTextStream *gStreamFromFile(FILE *file)
 {
-   gTextStream *ret = newStream();
+   gTextStream *ret;
+   fileStream  *fs;
 
-   ret->f = file;
-   if(ret->f)
-      ret->type = streamFile;
-   else
-   {
-      gFreeStream(ret);
+   if(!file)
       return NULL;
-   }
+
+   ret = newStream();
+
+   ret->data = (fs = malloc(sizeof(fileStream)));
+   memset(fs, 0, sizeof(*fs));
+
+   fs->f = file;
 
    fseek(file, 0, SEEK_END);
    ret->streamlen = ftell(file);
    fseek(file, 0, SEEK_SET);
 
-   ret->buffermax = 10;
-   ret->fbuffer = malloc(sizeof(char) * ret->buffermax);
-   ret->tempstr = malloc(sizeof(char) * ret->buffermax);
-   ret->tempstr[0] = 0;
+   fs->buffermax = 10;
+   fs->fbuffer = malloc(sizeof(char) * fs->buffermax);
+   fs->tempstr = malloc(sizeof(char) * fs->buffermax);
+   fs->tempstr[0] = 0;
 
    if(ret->streamlen < 9)
-      ret->fbufferlen = fread(ret->fbuffer, 1, ret->streamlen, file);
+      fs->fbufferlen = fread(fs->fbuffer, 1, ret->streamlen, file);
    else
-      ret->fbufferlen = fread(ret->fbuffer, 1, 9, file);
+      fs->fbufferlen = fread(fs->fbuffer, 1, 9, file);
 
-   ret->fbuffer[ret->fbufferlen] = 0;
+   fs->fbuffer[fs->fbufferlen] = 0;
 
-   ret->fbufferpos = 0;
-   ret->fpos = ftell(file);
+   fs->fbufferpos = 0;
+   fs->fpos = ftell(file);
 
    ret->ggetchar = getCharFile;
    ret->readchar = readCharFile;
@@ -430,15 +478,16 @@ gTextStream *gStreamFromFilename(const char *filename)
 
 static char getCharMemory(gTextStream *stream)
 {
-   char ret = 0;
+   memStream   *sd = (memStream *)stream->data;
+   char        ret = 0;
 
    if(stream->eofflag)
       return 0;
 
-   ret = *stream->rover;
-   stream->rover ++;
+   ret = *sd->rover;
+   sd->rover ++;
 
-   if(stream->rover - stream->memory >= stream->streamlen)
+   if(sd->rover - sd->memory >= stream->streamlen)
       stream->eofflag = true;
 
    return ret;
@@ -447,15 +496,16 @@ static char getCharMemory(gTextStream *stream)
 
 static char readCharMemory(gTextStream *stream)
 {
-   char ret = 0;
+   memStream   *sd = (memStream *)stream->data;
+   char        ret = 0;
 
    if(stream->eofflag)
       return 0;
 
-   if(stream->rover - stream->memory >= stream->streamlen)
+   if(sd->rover - sd->memory >= stream->streamlen)
       stream->eofflag = true;
    else
-      ret = *stream->rover;
+      ret = *sd->rover;
 
    return ret;
 }
@@ -463,53 +513,56 @@ static char readCharMemory(gTextStream *stream)
 
 static char *readAheadMemory(gTextStream *stream, unsigned int count)
 {
+   memStream   *sd = (memStream *)stream->data;
+
    if(stream->eofflag)
       return NULL;
 
-   if(stream->buffermax <= (int)count)
+   if(sd->buffermax <= (int)count)
    {
       int newsize = count + 1;
-      stream->tempstr = (char *)realloc(stream->tempstr, newsize);
-      memset(stream->tempstr, 0, newsize);
-      stream->buffermax = newsize;
+      sd->tempstr = (char *)realloc(sd->tempstr, newsize);
+      memset(sd->tempstr, 0, newsize);
+      sd->buffermax = newsize;
    }
    
-   if((stream->rover - stream->memory) >= stream->streamlen)
+   if((sd->rover - sd->memory) >= stream->streamlen)
    {
       stream->eofflag = true;
       return NULL;
    }
 
-   if((stream->rover - stream->memory) + (int)count >= stream->streamlen)
-      count = stream->streamlen - (stream->rover - stream->memory);
+   if((sd->rover - sd->memory) + (int)count >= stream->streamlen)
+      count = stream->streamlen - (sd->rover - sd->memory);
 
-   strncpy(stream->tempstr, stream->rover, count);
-   stream->tempstr[count] = 0;
+   strncpy(sd->tempstr, sd->rover, count);
+   sd->tempstr[count] = 0;
 
-   return stream->tempstr;
+   return sd->tempstr;
 }
 
 
 static void seekMemory(gTextStream *stream, int offset)
 {
-   const char *base = stream->memory, *marker = stream->rover;
+   memStream   *sd = (memStream *)stream->data;
+   const char  *base = sd->memory, *marker = sd->rover;
 
    if(offset == 0 || (offset > 0 && stream->eofflag))
       return;
 
    if(offset < 0 && marker + offset < base)
    {
-      stream->rover = stream->memory;
+      sd->rover = sd->memory;
       stream->eofflag = stream->streamlen > 0 ? false : true;
    }
    else if(marker + offset >= base + stream->streamlen)
    {
-      stream->rover = stream->memory + stream->streamlen;
+      sd->rover = sd->memory + stream->streamlen;
       stream->eofflag = true;
    }
    else
    {
-      stream->rover += offset;
+      sd->rover += offset;
       stream->eofflag = false;
    }
 }
@@ -517,9 +570,15 @@ static void seekMemory(gTextStream *stream, int offset)
 
 static void freeStreamMemory(gTextStream *stream)
 {
-   if(stream->owner)
-      free(stream->memory);
+   memStream   *sd = (memStream *)stream->data;
 
+   if(sd->owner)
+      free(sd->memory);
+
+   if(sd->tempstr)
+      free(sd->tempstr);
+     
+   free(sd);
    free(stream);
 }
 
@@ -527,22 +586,27 @@ static void freeStreamMemory(gTextStream *stream)
 
 gTextStream *gStreamFromMemory(char *memory, int length, bool owner)
 {
+   memStream   *sd;
    gTextStream *ret;
+
 
    if(!memory || length < 0)
       return NULL;
 
    ret = newStream();
-   ret->type = streamMemory;
 
-   ret->memory = memory;
-   ret->rover = memory;
+   ret->data = (sd = malloc(sizeof(memStream)));
+   memset(sd, 0, sizeof(sd));
+
    ret->streamlen = length;
-   ret->owner = owner;
 
-   ret->buffermax = 10;
-   ret->tempstr = malloc(sizeof(char) * ret->buffermax);
-   ret->tempstr[0] = 0;
+   sd->memory = memory;
+   sd->rover = memory;
+   sd->owner = owner;
+
+   sd->buffermax = 10;
+   sd->tempstr = malloc(sizeof(char) * sd->buffermax);
+   sd->tempstr[0] = 0;
 
    ret->ggetchar = getCharMemory;
    ret->readchar = readCharMemory;
@@ -567,9 +631,18 @@ void gSeekPos(gTextStream *stream, int pos)
    if(pos < 0)
       pos = 0;
    if(pos >= stream->streamlen)
-      pos = stream->streamlen;
+      pos = stream->streamlen - 1;
 
-   offset = pos - stream->fbufferpos;
+   if(stream->seek = seekMemory)
+   {
+      memStream *sd = (memStream *)stream->data;
+      offset = pos - (sd->rover - sd->memory);
+   }
+   else
+   {
+      fileStream *fs = (fileStream *)stream->data;
+      offset = pos - fs->fbufferpos;
+   }
 
    gSeek(stream, offset);
 }
