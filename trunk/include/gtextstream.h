@@ -111,37 +111,37 @@ gTextStream *gStreamFromMemory(char *memory, int length, bool owner);
 gTextStream *gStreamFromFilename(const char *filename);
 
 /**
- * \def gFreeStream(stream)
+ * \def gFreeStream(txtstrm)
  * \brief Frees a gTextStream
  *
- * Frees \a stream. If the stream is a memory buffer, the memory is 
+ * Frees \a txtstrm. If the stream is a memory buffer, the memory is 
  * freed. If the stream is a file, the filestream is clused.
 */
-#define gFreeStream(stream)  stream->freestream(stream)
+#define gFreeStream(txtstrm)  txtstrm->freestream(txtstrm)
 
 
 /**
- * \def gGetChar(stream)
+ * \def gGetChar(txtstrm)
  * \brief Gets a character
  *
- * Returns the next character from \a stream and increments the file/memory
+ * Returns the next character from \a txtstrm and increments the file/memory
  * pointer. Returns 0 on EOF
 */
-#define gGetChar(stream) stream->ggetchar(stream)
+#define gGetChar(txtstrm) txtstrm->ggetchar(txtstrm)
 
 
 /**
- * \def gReadChar(stream)
+ * \def gReadChar(txtstrm)
  * \brief Reads a character
  *
- * Returns the next character from \a stream but does not increment the 
+ * Returns the next character from \a txtstrm but does not increment the 
  * file/memory pointer. Returns 0 on EOF
 */
-#define gReadChar(stream) stream->readchar(stream)
+#define gReadChar(txtstrm) txtstrm->readchar(txtstrm)
 
 
 /**
- * \def gReadahead(stream, count)
+ * \def gReadahead(txtstrm, count)
  * \brief Reads a string from a stream.
  *
  * Returns a pointer to a string containing the next (count) number of 
@@ -150,7 +150,7 @@ gTextStream *gStreamFromFilename(const char *filename);
  * This function is a read-ahead function and does not increment 
  * the stream pointer.
 */
-#define gReadahead(stream, count) stream->readahead(stream, count)
+#define gReadahead(txtstrm, count) txtstrm->readahead(txtstrm, count)
 
 
 /**
@@ -162,7 +162,7 @@ gTextStream *gStreamFromFilename(const char *filename);
  * @param[in] stream Stream to seek within
  * @param[in] pos Position within the stream.
 */
-void gSeekPos(gTextStream *stream, int pos);
+void gSeekPos(gTextStream *txtstrm, int pos);
 
 
 /**
@@ -171,7 +171,7 @@ void gSeekPos(gTextStream *stream, int pos);
  *
  * Seeks ahead or behind by \a offset the given number of characters in \a stream.
 */
-#define gSeek(stream, offset) stream->seek(stream, offset)
+#define gSeek(txtstrm, offset) txtstrm->seek(txtstrm, offset)
 
 
 /**
@@ -180,7 +180,7 @@ void gSeekPos(gTextStream *stream, int pos);
  *
  *  @return true of the stream has reached the end of the buffer/file.
 */
-bool gStreamEnd(gTextStream *stream);
+bool gStreamEnd(gTextStream *txtstrm);
 
 
 

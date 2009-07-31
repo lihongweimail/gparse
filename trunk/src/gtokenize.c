@@ -138,19 +138,35 @@ gTokenStream *gCreateTokenStream(gTokenParms *parameters, gTextStream *stream, c
 
 
 
-void gFreeTokenStream(gTokenStream *tstream)
+void gFreeTokenStream(gTokenStream *tokstrm)
 {
-   if(tstream->name)
-      free(tstream->name);
+   if(tokstrm->name)
+      free(tokstrm->name);
 
-   gFreeList(tstream->tcache);
-   M_QStrFree(tstream->tokenbuf);
-   free(tstream->tokenbuf);
+   gFreeList(tokstrm->tcache);
+   M_QStrFree(tokstrm->tokenbuf);
+   free(tokstrm->tokenbuf);
 
-   free(tstream);
+   free(tokstrm);
 }
 
 
+
+void gResetTokenStream(gTokenStream *tokstrm)
+{
+   // Clear the token cache, reset the temporary token buffer.
+   gClearList(tokstrm->tcache);
+
+   tokstrm->charnum = tokstrm->linenum = 1;
+   tokstrm->tokenbuf->buffer[0] = 0;
+
+   // There are no more cached tokens
+   tokstrm->cfirst = 0;
+   tokstrm->clast = -1;
+
+   // Seek the start of the text stream
+   gSeekPos(tokstrm->stream, 0);
+}
 
 // Little helper functions.
 static bool isNumeric(char c)
@@ -174,51 +190,51 @@ static bool isWhiteSpace(char c)
 }
 
 
-static void countWhitespace(gTokenStream *tstream, const char *string, int length)
+static void countWhitespace(gTokenStream *tokstrm, const char *string, int length)
 {
    int i;
    for(i = 0; i < length; i++)
    {
       if(string[i] == '\n')
       {
-         tstream->linenum++;
-         tstream->charnum = 1;
+         tokstrm->linenum++;
+         tokstrm->charnum = 1;
       }
       else if(string[i] != '\r')
-         tstream->charnum++;
+         tokstrm->charnum++;
    }
 }
 
 
-static void skipWhitespace(gTokenStream *tstream, const char *string, int length)
+static void skipWhitespace(gTokenStream *tokstrm, const char *string, int length)
 {
-   countWhitespace(tstream, string, length);
-   gSeek(tstream->stream, length);
+   countWhitespace(tokstrm, string, length);
+   gSeek(tokstrm->stream, length);
 }
 
 
-static void countChars(gTokenStream *tstream, int length)
+static void countChars(gTokenStream *tokstrm, int length)
 {
-   tstream->charnum += length;
-}
-
-
-
-static void skipChars(gTokenStream *tstream, int length)
-{
-   countChars(tstream, length);
-   gSeek(tstream->stream, length);
+   tokstrm->charnum += length;
 }
 
 
 
-
-
-
-static void skipComment(gTokenStream *tstream, const char *stop)
+static void skipChars(gTokenStream *tokstrm, int length)
 {
-   gTextStream    *stream = tstream->stream;
-   gTokenParms    *parms = tstream->parameters;
+   countChars(tokstrm, length);
+   gSeek(tokstrm->stream, length);
+}
+
+
+
+
+
+
+static void skipComment(gTokenStream *tokstrm, const char *stop)
+{
+   gTextStream    *stream = tokstrm->stream;
+   gTokenParms    *parms = tokstrm->parameters;
    const char     *str;
    int            len = strlen(stop);
    
@@ -226,11 +242,11 @@ static void skipComment(gTokenStream *tstream, const char *stop)
    {
       if(!parms->strncmp(str, stop, len))
       {
-         skipWhitespace(tstream, str, len);
+         skipWhitespace(tokstrm, str, len);
          break;
       }
 
-      skipWhitespace(tstream, str, 1);
+      skipWhitespace(tokstrm, str, 1);
    }
 }
 
@@ -256,16 +272,16 @@ static int checkEscape(const char c, gTokenParms *parms)
 }
 
 
-static gToken *parseString(gTokenStream *tstream)
+static gToken *parseString(gTokenStream *tokstrm)
 {
-   gTextStream    *stream = tstream->stream;
-   gTokenParms    *parms = tstream->parameters;
+   gTextStream    *stream = tokstrm->stream;
+   gTokenParms    *parms = tokstrm->parameters;
    int            linestart, charstart;
 
-   linestart = tstream->linenum;
-   charstart = tstream->charnum;
+   linestart = tokstrm->linenum;
+   charstart = tokstrm->charnum;
 
-   M_QStrClear(tstream->tokenbuf);
+   M_QStrClear(tokstrm->tokenbuf);
 
    while(!gStreamEnd(stream))
    {
@@ -275,14 +291,14 @@ static gToken *parseString(gTokenStream *tstream)
       if(ch == '\n')
       {
          // Error
-         parms->setError("%s(%i, %i): Unterminated string literal.\n", tstream->name, linestart, charstart);
-         return gCreateToken(M_QStrBuffer(tstream->tokenbuf), tString, linestart, charstart);
+         parms->setError("%s(%i, %i): Unterminated string literal.\n", tokstrm->name, linestart, charstart);
+         return gCreateToken(M_QStrBuffer(tokstrm->tokenbuf), tString, linestart, charstart);
       }
 
       if(ch == '\"')
       {
-         skipChars(tstream, 1);
-         return gCreateToken(M_QStrBuffer(tstream->tokenbuf), tString, linestart, charstart);
+         skipChars(tokstrm, 1);
+         return gCreateToken(M_QStrBuffer(tokstrm->tokenbuf), tString, linestart, charstart);
       }
 
       if(!(parms->flags & gIgnoreEscapes) && ch == '\\')
@@ -294,74 +310,74 @@ static gToken *parseString(gTokenStream *tstream)
          {
             // Error
             if(s)
-               M_QStrPutc(tstream->tokenbuf, *s);
+               M_QStrPutc(tokstrm->tokenbuf, *s);
 
-            parms->setError("%s(%i, %i): Unterminated string literal.\n", tstream->name, linestart, charstart);
-            return gCreateToken(M_QStrBuffer(tstream->tokenbuf), tString, linestart, charstart);
+            parms->setError("%s(%i, %i): Unterminated string literal.\n", tokstrm->name, linestart, charstart);
+            return gCreateToken(M_QStrBuffer(tokstrm->tokenbuf), tString, linestart, charstart);
          }
 
-         skipChars(tstream, 2);
+         skipChars(tokstrm, 2);
 
          index = checkEscape(s[1], parms);
          if(index != -1)
-            M_QStrPutc(tstream->tokenbuf, parms->escapelist[index].replacechar);
+            M_QStrPutc(tokstrm->tokenbuf, parms->escapelist[index].replacechar);
          else
-            M_QStrPutc(tstream->tokenbuf, s[1]);
+            M_QStrPutc(tokstrm->tokenbuf, s[1]);
       }
       else
       {
-         M_QStrPutc(tstream->tokenbuf, ch);
-         skipChars(tstream, 1);
+         M_QStrPutc(tokstrm->tokenbuf, ch);
+         skipChars(tokstrm, 1);
       }
    }
 
    // Error
-   parms->setError("%s(%i, %i): Unterminated string literal.\n", tstream->name, linestart, charstart);
+   parms->setError("%s(%i, %i): Unterminated string literal.\n", tokstrm->name, linestart, charstart);
 
-   return gCreateToken(M_QStrBuffer(tstream->tokenbuf), tString, linestart, charstart);
+   return gCreateToken(M_QStrBuffer(tokstrm->tokenbuf), tString, linestart, charstart);
 }
 
 
 
 
 
-static gToken *parseHex(gTokenStream *tstream)
+static gToken *parseHex(gTokenStream *tokstrm)
 {
-   gTextStream    *stream = tstream->stream;
-   gTokenParms    *parms = tstream->parameters;
+   gTextStream    *stream = tokstrm->stream;
+   gTokenParms    *parms = tokstrm->parameters;
    int            linestart, charstart;
    char           *str;
 
-   linestart = tstream->linenum;
-   charstart = tstream->charnum;
+   linestart = tokstrm->linenum;
+   charstart = tokstrm->charnum;
 
-   M_QStrClear(tstream->tokenbuf);
+   M_QStrClear(tokstrm->tokenbuf);
 
    str = gReadahead(stream, 3);
 
    if(!str || strlen(str) != 3)
    {
-      parms->setError("%s(%i, %i): Expected a Hex value after '0x'", tstream->name, linestart, charstart);
+      parms->setError("%s(%i, %i): Expected a Hex value after '0x'", tokstrm->name, linestart, charstart);
       return gCreateToken(str, tHexInt, linestart, charstart);
    }
 
-   M_QStrCat(tstream->tokenbuf, str);
-   skipChars(tstream, 3);
+   M_QStrCat(tokstrm->tokenbuf, str);
+   skipChars(tokstrm, 3);
 
    while(!gStreamEnd(stream))
    {
       char ch = gReadChar(stream);
       if(isHexChar(ch))
       {
-         skipChars(tstream, 1);
-         M_QStrPutc(tstream->tokenbuf, ch);
+         skipChars(tokstrm, 1);
+         M_QStrPutc(tokstrm->tokenbuf, ch);
          continue;
       }
 
       break;
    }
 
-   return gCreateToken(M_QStrBuffer(tstream->tokenbuf), tHexInt, linestart, charstart);
+   return gCreateToken(M_QStrBuffer(tokstrm->tokenbuf), tHexInt, linestart, charstart);
 }
 
 
@@ -388,25 +404,25 @@ static int checkKeyword(const char *token, gTokenParms *parms)
 
 
 
-static gToken *parseIdentifier(gTokenStream *tstream)
+static gToken *parseIdentifier(gTokenStream *tokstrm)
 {
-   gTextStream    *stream = tstream->stream;
-   gTokenParms    *parms = tstream->parameters;
+   gTextStream    *stream = tokstrm->stream;
+   gTokenParms    *parms = tokstrm->parameters;
    int            linestart, charstart, index;
    int            type = tIdentifier;
 
-   linestart = tstream->linenum;
-   charstart = tstream->charnum;
+   linestart = tokstrm->linenum;
+   charstart = tokstrm->charnum;
 
-   M_QStrClear(tstream->tokenbuf);
+   M_QStrClear(tokstrm->tokenbuf);
 
    while(!gStreamEnd(stream))
    {
       char ch = gReadChar(stream);
       if(isAlphaNumeric(ch) || isNumeric(ch) || ch == '_')
       {
-         skipChars(tstream, 1);
-         M_QStrPutc(tstream->tokenbuf, ch);
+         skipChars(tokstrm, 1);
+         M_QStrPutc(tokstrm->tokenbuf, ch);
          continue;
       }
 
@@ -414,18 +430,18 @@ static gToken *parseIdentifier(gTokenStream *tstream)
    }
 
    // Check here for constants.
-   index = checkKeyword(M_QStrBuffer(tstream->tokenbuf), tstream->parameters);
+   index = checkKeyword(M_QStrBuffer(tokstrm->tokenbuf), tokstrm->parameters);
    if(index != -1)
    {
-      gKeyword *kw = &tstream->parameters->keywlist[index];
+      gKeyword *kw = &tokstrm->parameters->keywlist[index];
 
       type = kw->newtype;
 
       if(kw->newtoken)
-         M_QStrSet(tstream->tokenbuf, kw->newtoken);
+         M_QStrSet(tokstrm->tokenbuf, kw->newtoken);
    }
 
-   return gCreateToken(M_QStrBuffer(tstream->tokenbuf), type, linestart, charstart);
+   return gCreateToken(M_QStrBuffer(tokstrm->tokenbuf), type, linestart, charstart);
 }
 
 
@@ -460,17 +476,17 @@ int checkSymbol(gTokenParms *parms, char *string)
 
 
 
-static gToken *parseNumber(gTokenStream *tstream)
+static gToken *parseNumber(gTokenStream *tokstrm)
 {
-   gTextStream    *stream = tstream->stream;
-   gTokenParms    *parms = tstream->parameters;
+   gTextStream    *stream = tokstrm->stream;
+   gTokenParms    *parms = tokstrm->parameters;
    int            linestart, charstart;
    int            type = tInteger;
 
-   linestart = tstream->linenum;
-   charstart = tstream->charnum;
+   linestart = tokstrm->linenum;
+   charstart = tokstrm->charnum;
 
-   M_QStrClear(tstream->tokenbuf);
+   M_QStrClear(tokstrm->tokenbuf);
 
    while(!gStreamEnd(stream))
    {
@@ -480,8 +496,8 @@ static gToken *parseNumber(gTokenStream *tstream)
       {
          if(isNumeric(ch) || ch == '.')
          {
-            M_QStrPutc(tstream->tokenbuf, ch);
-            skipChars(tstream, 1);
+            M_QStrPutc(tokstrm->tokenbuf, ch);
+            skipChars(tokstrm, 1);
 
             if(ch == '.')
                type = tDecimal;
@@ -493,55 +509,55 @@ static gToken *parseNumber(gTokenStream *tstream)
       {
          if(isNumeric(ch))
          {
-            M_QStrPutc(tstream->tokenbuf, ch);
-            skipChars(tstream, 1);
+            M_QStrPutc(tokstrm->tokenbuf, ch);
+            skipChars(tokstrm, 1);
             continue;
          }
          else if(ch == 'e' || ch == 'E')
          {
-            skipChars(tstream, 1);
-            M_QStrPutc(tstream->tokenbuf, ch);
+            skipChars(tokstrm, 1);
+            M_QStrPutc(tokstrm->tokenbuf, ch);
             
             // Read-ahead and make sure there is at least one digit.
             ch = gReadChar(stream);
             if(ch == '+' || ch == '-')
             {
-               M_QStrPutc(tstream->tokenbuf, ch);
-               skipChars(tstream, 1);
+               M_QStrPutc(tokstrm->tokenbuf, ch);
+               skipChars(tokstrm, 1);
                ch = gReadChar(stream);
             }
 
             if(gStreamEnd(stream) || !isNumeric(ch))
             {
-               parms->setError("%s(%i, %i): Expected numeric value in exponent.", tstream->name, linestart, charstart);
-               return gCreateToken(M_QStrBuffer(tstream->tokenbuf), type, linestart, charstart);
+               parms->setError("%s(%i, %i): Expected numeric value in exponent.", tokstrm->name, linestart, charstart);
+               return gCreateToken(M_QStrBuffer(tokstrm->tokenbuf), type, linestart, charstart);
             }
 
             while(!gStreamEnd(stream) && isNumeric(ch))
             {
-               M_QStrPutc(tstream->tokenbuf, ch);
-               skipChars(tstream, 1);
+               M_QStrPutc(tokstrm->tokenbuf, ch);
+               skipChars(tokstrm, 1);
                ch = gReadChar(stream);
             }
 
-            gCreateToken(M_QStrBuffer(tstream->tokenbuf), type, linestart, charstart);
+            gCreateToken(M_QStrBuffer(tokstrm->tokenbuf), type, linestart, charstart);
          }
       }
 
       break;
    }
 
-   return gCreateToken(M_QStrBuffer(tstream->tokenbuf), type, linestart, charstart);
+   return gCreateToken(M_QStrBuffer(tokstrm->tokenbuf), type, linestart, charstart);
 }
 
 
 
 
 
-gToken *gGetNextToken(gTokenStream *tstream)
+gToken *gGetNextToken(gTokenStream *tokstrm)
 {
-   gTextStream    *stream = tstream->stream;
-   gTokenParms    *parms = tstream->parameters;
+   gTextStream    *stream = tokstrm->stream;
+   gTokenParms    *parms = tokstrm->parameters;
 
    char           rover, *string;
    gToken         *ret;
@@ -560,12 +576,12 @@ gToken *gGetNextToken(gTokenStream *tstream)
 
          if(rover == '\n' && parms->flags & gNewlineTokens)
          {
-            gToken *t = gCreateToken("", tLineBreak, tstream->linenum, tstream->charnum);
-            skipWhitespace(tstream, &rover, 1);
+            gToken *t = gCreateToken("", tLineBreak, tokstrm->linenum, tokstrm->charnum);
+            skipWhitespace(tokstrm, &rover, 1);
             return t;
          }
 
-         skipWhitespace(tstream, &rover, 1);
+         skipWhitespace(tokstrm, &rover, 1);
       }
 
       if(!rover)
@@ -593,8 +609,8 @@ gToken *gGetNextToken(gTokenStream *tstream)
 
          if(!parms->strncmp(string, parms->comment1s, len))
          {
-            skipWhitespace(tstream, string, len);
-            skipComment(tstream, parms->comment1e);
+            skipWhitespace(tokstrm, string, len);
+            skipComment(tokstrm, parms->comment1e);
             continue;
          }
       }
@@ -604,8 +620,8 @@ gToken *gGetNextToken(gTokenStream *tstream)
 
          if(!parms->strncmp(parms->comment2s, string, len))
          {
-            skipWhitespace(tstream, string, len);
-            skipComment(tstream, parms->comment2e);
+            skipWhitespace(tokstrm, string, len);
+            skipComment(tokstrm, parms->comment2e);
             continue;
          }
       }
@@ -614,30 +630,30 @@ gToken *gGetNextToken(gTokenStream *tstream)
       if(string[0] == '\"')
       {
          // String literal
-         skipChars(tstream, 1);
-         return parseString(tstream);
+         skipChars(tokstrm, 1);
+         return parseString(tokstrm);
       }
       else if(stringlen >= 2 && string[0] == '0' && string[1] == 'x')
       {
          // Hex number
-         if((ret = parseHex(tstream)))
+         if((ret = parseHex(tokstrm)))
             return ret;
 
          break;
       }
       else if(isNumeric(string[0]) || (string[0] == '.' && isNumeric(string[1])))
       {
-         if((ret = parseNumber(tstream)))
+         if((ret = parseNumber(tokstrm)))
             return ret;
          break;
       }
-      else if((index = checkSymbol(tstream->parameters, string)) != -1)
+      else if((index = checkSymbol(tokstrm->parameters, string)) != -1)
       {
-         gSymbol *symbol = &tstream->parameters->symbollist[index];
-         gToken  *tok = gCreateToken(symbol->token, symbol->newtype, tstream->linenum, tstream->charnum);
+         gSymbol *symbol = &tokstrm->parameters->symbollist[index];
+         gToken  *tok = gCreateToken(symbol->token, symbol->newtype, tokstrm->linenum, tokstrm->charnum);
 
          // Symbols could contain return chars in them.
-         skipWhitespace(tstream, tok->token, strlen(tok->token));
+         skipWhitespace(tokstrm, tok->token, strlen(tok->token));
 
          if(tok)
             return tok;
@@ -645,7 +661,7 @@ gToken *gGetNextToken(gTokenStream *tstream)
       }
       else if(isAlphaNumeric(string[0]) || string[0] == '_')
       {
-         if((ret = parseIdentifier(tstream)))
+         if((ret = parseIdentifier(tokstrm)))
             return ret;
          break;
       }
@@ -655,7 +671,7 @@ gToken *gGetNextToken(gTokenStream *tstream)
          // SoM: TODO: some times comment terminators such as '*/' will trigger 
          // this error message. Something should really be done about this.
 
-         parms->setError("%s(%i, %i): Unknown char encountered.\n", tstream->name, tstream->linenum, tstream->charnum);
+         parms->setError("%s(%i, %i): Unknown char encountered.\n", tokstrm->name, tokstrm->linenum, tokstrm->charnum);
          // Skip the char
          gGetChar(stream);
          continue;
@@ -664,51 +680,51 @@ gToken *gGetNextToken(gTokenStream *tstream)
       break;
    }
 
-   tstream->endofstream = true;
-   return gCreateToken("end of file", tEOF, tstream->linenum, tstream->charnum);
+   tokstrm->endofstream = true;
+   return gCreateToken("end of file", tEOF, tokstrm->linenum, tokstrm->charnum);
 }
 
 
 
 
-gToken *gGetToken(gTokenStream *tstream, int index)
+gToken *gGetToken(gTokenStream *tokstrm, int index)
 {
    int i;
 
-   if(index < tstream->cfirst)
+   if(index < tokstrm->cfirst)
    {
       // Can't go back in the token stream.
       return NULL;
    }
-   else if(index > tstream->clast)
+   else if(index > tokstrm->clast)
    {
       // Cache new tokens until the end of the stream.
-      int count = index - tstream->clast;
+      int count = index - tokstrm->clast;
 
       for(i = 0; i < count; i++)
       {
-         if(tstream->endofstream)
-            return tstream->tcache->list[tstream->tcache->size - 1];
+         if(tokstrm->endofstream)
+            return tokstrm->tcache->list[tokstrm->tcache->size - 1];
 
-         gAppendListItem(tstream->tcache, gGetNextToken(tstream));
-         tstream->clast++;
+         gAppendListItem(tokstrm->tcache, gGetNextToken(tokstrm));
+         tokstrm->clast++;
       }
    }
 
-   return tstream->tcache->list[index - tstream->cfirst];
+   return tokstrm->tcache->list[index - tokstrm->cfirst];
 }
 
 
 
-void gClearTCache(gTokenStream *tstream)
+void gClearTCache(gTokenStream *tokstrm)
 {
-   if(tstream->cfirst == tstream->clast)
+   if(tokstrm->cfirst == tokstrm->clast)
       return;
 
    // size - 1 is the last item in the list... hehe. Leave at least one token
    // in the stream at all times please. :)
-   gDeleteListRange(tstream->tcache, 0, tstream->tcache->size - 2);
-   tstream->cfirst = tstream->clast;
+   gDeleteListRange(tokstrm->tcache, 0, tokstrm->tcache->size - 2);
+   tokstrm->cfirst = tokstrm->clast;
 }
 
 
