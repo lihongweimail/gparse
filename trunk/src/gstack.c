@@ -148,7 +148,7 @@ void *gGetStackTop(gStack *s)
 int gGetStackSize(gStack *s)
 {
    gStackEntry *it;
-   int count;
+   int count = 0;
 
    for(it = s->top; it; it = it->prev)
       count++;
