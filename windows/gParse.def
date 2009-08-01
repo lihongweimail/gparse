@@ -1,5 +1,5 @@
 LIBRARY gParse
-DESCRIPTION "gParse 0.1.0"
+VERSION 0.1.0
 EXPORTS
     gNewHashTable             @1
     gFreeHashTable            @2

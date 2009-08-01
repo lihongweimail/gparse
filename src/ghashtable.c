@@ -30,6 +30,7 @@
 #include "ghashtable.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 // ----------------------------------------------------------------------------
 // gHashTable
@@ -147,7 +148,7 @@ gHashTable *gNewHashTable(unsigned numChains, void (*freeFunc)(void *), bool ign
    if(ignoreCase)
    {
       ret->hashFunc = calcHashKey;
-      ret->compFunc = stricmp;
+      ret->compFunc = _stricmp;
    }
    else
    {
@@ -305,7 +306,7 @@ bool gAddTableItem(gHashTable *table, const char *key, void *item)
    memset(it, 0, sizeof(*it));
 
    it->freeFunc = table->freeFunc;
-   it->key = strdup(key);
+   it->key = _strdup(key);
    it->object = item;
 
    (it->next = foundHead->next)->prev = it;
