@@ -102,6 +102,10 @@ SOURCE=..\src\glist.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\gParse.rc
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\gstack.c
 # End Source File
 # Begin Source File
