@@ -90,7 +90,7 @@ gToken *gCreateToken(const char *token, int type, int linenum, int charnum)
    gToken *ret = (gToken *)malloc(sizeof(gToken));
    memset(ret, 0, sizeof(*ret));
 
-   ret->token = strdup(token);
+   ret->token = _strdup(token);
    ret->type = type;
    ret->linenum = linenum;
    ret->charnum = charnum;
@@ -124,7 +124,7 @@ gTokenStream *gCreateTokenStream(gTokenParms *parameters, gTextStream *stream, c
 
    ret->stream = stream;
    ret->parameters = parameters;
-   ret->name = strdup(name);
+   ret->name = _strdup(name);
    ret->tokenbuf = malloc(sizeof(qstring_t));
    ret->charnum = ret->linenum = 1;
 
@@ -395,7 +395,7 @@ static int checkKeyword(const char *token, gTokenParms *parms)
 
    for(i = 0; (kw = parms->keywlist + i)->token; i++)
    {
-      if(((parms->flags & gIgnoreCase) && !stricmp(token, kw->token)) 
+      if(((parms->flags & gIgnoreCase) && !_stricmp(token, kw->token)) 
          || !strcmp(token, kw->token))
          return i;
    }
@@ -564,7 +564,7 @@ gToken *gGetNextToken(gTokenStream *tokstrm)
    gToken         *ret;
    int            max, len, index, stringlen;
 
-   parms->strncmp = (parms->flags & gIgnoreCase) ? strnicmp : strncmp;
+   parms->strncmp = (parms->flags & gIgnoreCase) ? _strnicmp : strncmp;
 
    while(!gStreamEnd(stream))
    {
