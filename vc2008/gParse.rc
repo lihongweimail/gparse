@@ -70,12 +70,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "gParse Dynamic Link Library"
-            VALUE "FileVersion", "0, 1, 0, 0"
+            VALUE "FileVersion", FILE_VERSION_S
             VALUE "InternalName", "gParse"
             VALUE "LegalCopyright", "Copyright (C) 2009 Stephen McGranahan"
             VALUE "OriginalFilename", "gParse.dll"
             VALUE "ProductName", "gParse Dynamic Link Library"
-            VALUE "ProductVersion", "0, 1, 0, 0"
+            VALUE "ProductVersion", GPARSE_VERSION_S
         END
     END
     BLOCK "VarFileInfo"
