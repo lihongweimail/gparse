@@ -143,8 +143,8 @@ typedef enum
    scEnd,        //!< End execution. Completely stop it.
 
    // There are six different codes which means the mask for codes needs to be
-   // at least 0x6
-   scCodeMask = 0x6
+   // at least 0x7
+   scCodeMask = 0x7
 } tpStepCode;
 
 
